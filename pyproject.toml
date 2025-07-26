@@ -1,0 +1,31 @@
+[project]
+name = "mylang"
+version = "0.1.0"
+description = "A new kind of programming language"
+authors = [
+    {name = "Haris Gušić", email = "harisgusic.dev@gmail.com"},
+]
+requires-python = ">=3.10"
+dependencies = []
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.37.0",
+    "pytest>=8.4.1",
+    "debugpy>=1.8.15",
+]
+
+[tool.pyright]
+executionEnvironments = [
+    { root = "tests", extraPaths = [ "." ] }
+]
+
+[tool.pdm]
+distribution = true
+
