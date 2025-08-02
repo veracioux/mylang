@@ -8,13 +8,15 @@ TypeValue = TypeVar("TypeValue")
 
 
 class Primitive(Object):
-    pass
+    @functools.cache
+    def __new__(cls, *args):
+        return super().__new__(cls)
 
 
 class Scalar(Primitive, Generic[TypeValue]):
     __slots__ = ("value",)
 
-    def __init__(self, value: TypeValue):
+    def __init__(self, value: TypeValue, /):
         self.value = value
 
     def __eq__(self, other):
@@ -26,7 +28,7 @@ class Scalar(Primitive, Generic[TypeValue]):
         return hash(self.value)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.value!r})'
+        return f"{self.__class__.__name__}({self.value!r})"
 
 
 class Number(Scalar[TypeValue], Generic[TypeValue]):
@@ -51,18 +53,12 @@ class Empty(Primitive, ABC):
 
 @final
 class Null(Empty):
-    # Make Null a singleton
-    @functools.lru_cache(maxsize=1)
-    def __new__(cls):
-        return super().__new__(cls)
+    pass
 
 
 @final
 class Undefined(Empty):
-    # Make Null a singleton
-    @functools.lru_cache(maxsize=1)
-    def __new__(cls):
-        return super().__new__(cls)
+    pass
 
 
 # TODO: uncomment

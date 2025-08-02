@@ -1,8 +1,13 @@
+import functools
 from typing import Any
-from .base import class_, Object
+from .base import Args, Object
 
 
 class String(Object):
+    @functools.cache
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
     def __init__(self, value: str = ""):
         self.value = value
         super().__init__()
@@ -20,14 +25,9 @@ class String(Object):
         return f'{self.__class__.__name__}({self.value!r})'
 
 
-# class Path(metaclass=class_):
-#     def __mylang_init__(self, parts: List[String]):
-#         pass
+class Path(Object):
+    def __init__(self, *args):
+        super().__init__(*args)
 
-
-class Context(Object):
-    pass
-
-
-class Application(Context):
-    pass
+    def _m_init_(self, args: Args, /):
+        self.parts = args._m_dict_

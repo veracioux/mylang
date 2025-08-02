@@ -1,8 +1,13 @@
-from typing import TYPE_CHECKING
+from contextlib import contextmanager
+from contextvars import ContextVar
+import functools
+from types import FunctionType
+from typing import TYPE_CHECKING, Any, TypeVar
 
 
 if TYPE_CHECKING:
-    from mylang.stdlib.core.base import Object
+    from .base import Object
+    from .func import fun
 
 
 def python_obj_to_mylang(obj):
@@ -28,10 +33,7 @@ def python_obj_to_mylang(obj):
 
 
 def python_dict_from_args_kwargs(*args, **kwargs):
-    return {
-        **{python_obj_to_mylang(i): python_obj_to_mylang(arg) for i, arg in enumerate(args)},
-        **{python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in kwargs.items()},
-    }
+    return dict(enumerate(args), **kwargs)
 
 
 def mylang_obj_to_python(obj: 'Object'):
@@ -62,3 +64,73 @@ def mylang_obj_to_python(obj: 'Object'):
 def mylang_dict_from_args_kwargs(*args, **kwargs):
     """Convert args and kwargs to a Dict."""
     return python_obj_to_mylang(python_dict_from_args_kwargs)
+
+
+TypeFunc = TypeVar('TypeFunc', bound=FunctionType)
+
+
+all_functions_defined_as_classes: set[type] = set()
+
+
+def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun':
+    def decorator(cls):
+        from .complex import String
+
+        # Check the class for disallowed attributes
+        if monkeypatch_methods:
+            disallowed_attrs = ('__init__', '__call__')
+            for attr in disallowed_attrs:
+                if attr in vars(cls):
+                    raise ValueError(f'class used as a function must not have {attr} method defined')
+
+        # Register the class as a function
+        all_functions_defined_as_classes.add(cls)
+
+        # Treating the class as a function,
+
+        # Set the function name
+        cls.name = python_obj_to_mylang(cls._m_name_) if hasattr(cls, '_m_name_') else String(cls.__name__)
+
+        if monkeypatch_methods:
+            # Make sure that the class can never be called by anything other than `call`
+            def _m_call_decorator(_m_call_):
+                @functools.wraps(_m_call_)
+                def wrapper(self, *args, **kwargs):
+                    assert currently_called_func.get() is self
+                    return _m_call_(self, *args, **kwargs)
+                return wrapper
+            cls._m_call_ = _m_call_decorator(cls._m_call_)
+
+            # Use fun.__call__ as cls.__init__
+            # NOTE: Cannot just do cls.__call__ = fun.__call__ because it would
+            # result in a recursive import
+            def fun__call__(self, *args, **kwargs):
+                from .func import fun
+                return fun.__call__(self, *args, **kwargs)
+            cls.__init__ = fun__call__
+
+        # TODO: initialize parameters and body
+        return cls
+
+    if cls is not None:
+        return decorator(cls)
+    else:
+        return decorator
+
+
+currently_called_func = ContextVar('currently_called_func', default=None)
+
+
+def expose(obj: 'Object'):
+    """Expose the object outside of Python."""
+    raise NotImplementedError
+
+
+@contextmanager
+def set_contextvar(contextvar: 'ContextVar', value: Any):
+    """Set the current context to the given context."""
+    reset_token = contextvar.set(value)
+    try:
+        yield
+    finally:
+        contextvar.reset(reset_token)

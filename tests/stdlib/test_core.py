@@ -1,8 +1,9 @@
 from mylang.stdlib.core._utils import python_obj_to_mylang
 from mylang.stdlib.core.base import Args, Array
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import fun
+from mylang.stdlib.core.func import fun, set
 from mylang.stdlib.core.primitive import Int, undefined
+from mylang.stdlib.core._context import Context, current_context
 
 
 class TestArgs:
@@ -42,3 +43,21 @@ class Test_fun:
             {0: "test", 1: "x", "a": "A", "b": "B"}
         )
         assert f.body == Array(Args("call", "something"))
+
+
+class Test_set:
+    def test_call(self):
+        set(Args(a=1, b=2))
+        context = current_context.get()
+        assert context[String('a')] == Int(1)
+        assert context[String('b')] == Int(2)
+
+    def test_call_python_args_kwargs(self):
+        set(a=1)
+        context = current_context.get()
+        assert context[String('a')] == Int(1)
+
+    def test_empty_call(self):
+        set()
+        context = current_context.get()
+        assert context.dict_ == {}

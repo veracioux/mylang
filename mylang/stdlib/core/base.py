@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, Generic, Iterable, TypeVar, overload
 
 
 from ._utils import mylang_obj_to_python, python_obj_to_mylang, python_dict_from_args_kwargs
@@ -35,6 +35,9 @@ class Object:
             for k in parameters.keys()
         }
         return f"{self.__class__.__name__}({', '.join(initializers)})"
+
+    def __hash__(self):
+        return id(self)
 
 
 # TODO: probably want class to be a typed object, but not sure how to do that
@@ -75,6 +78,9 @@ class Array(Object, Generic[T]):
             and self._m_array_ == other
         )
 
+    def __iter__(self):
+        return iter(self._m_array_)
+
 
 class Dict(Object):
     """An object that contains a mapping of keys to values."""
@@ -84,7 +90,7 @@ class Dict(Object):
         self._m_dict_: dict[Object, Object] = args._m_dict_
 
     @classmethod
-    def from_dict(cls, source: dict, /):
+    def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
         obj._m_dict_ = {
             python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in source.items()
@@ -138,7 +144,7 @@ class Args(Dict):
     Right now it does nothing extra by itself, but various contexts treat it
     differently than :class:`Dict`.
     """
-    def get_last_positional(self):
+    def get_last_positional_index(self):
         from .primitive import Int
         last_positional_arg_index = -1
         for key in self._m_dict_:
@@ -147,10 +153,51 @@ class Args(Dict):
 
         return last_positional_arg_index if last_positional_arg_index >= 0 else None
 
+    def keyed_dict(self):
+        """Get the keyed items (i.e. non-positional) of the Args."""
+        from .primitive import Int
+        return {k: v for k, v in self._m_dict_.items() if not isinstance(k, Int)}
+
+    @overload
+    def __getitem__(self, key: slice, /) -> Array:
+        ...
+
     def __getitem__(self, key: Any, /) -> Object:
         """Get an item from the Args."""
-        return self._m_dict_[python_obj_to_mylang(key)]
+        if isinstance(key, slice):
+            from .primitive import Int
+            positional_args = tuple(x for x in self._m_dict_ if isinstance(x, Int))
+            return Array.from_list(positional_args[key])
+        else:
+            return self._m_dict_[python_obj_to_mylang(key)]
 
     def __contains__(self, key: Any, /) -> bool:
         """Check if the Args contains a key."""
         return python_obj_to_mylang(key) in self._m_dict_
+
+    def __add__(self, other: 'Args' | Iterable, /) -> 'Args':
+        """Combine two Args objects."""
+        if isinstance(other, self.__class__):
+            combined = self._m_dict_.copy()
+            combined.update(other._m_dict_)
+            return Args.from_dict(combined)
+        elif isinstance(other, Iterable):
+            positional = (*self[:], *other)
+            return Args.from_dict(
+                dict(enumerate(positional)) | self.keyed_dict()
+            )
+        else:
+            return NotImplemented
+
+    def __radd__(self, other: Iterable, /):
+        if not isinstance(other, Iterable):
+            return NotImplemented
+        positional = (*other, *self[:])
+        return Args.from_dict(
+            dict(enumerate(positional)) | self.keyed_dict()
+        )
+
+
+class Ref(Object):
+    def __init__(self, obj: Object):
+        self.obj = obj
