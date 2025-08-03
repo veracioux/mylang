@@ -9,8 +9,10 @@ from contextvars import ContextVar
 class Context:
     def __init__(
         self,
-        parent: Optional["Context"] = None,
         dict_: Optional[dict[Object, Object]] = {},
+        /,
+        *,
+        parent: Optional["Context"] = None,
     ):
         super().__init__()
         self.parent = parent
@@ -33,11 +35,18 @@ class Context:
         elif self.parent is not None:
             return self.parent[key]
         else:
-            raise KeyError(f"Key {key} not found in context.")
+            raise KeyError(f"Key {key!r} not found in context.")
 
     def __setitem__(self, key: Any, value: Any) -> None:
         self.dict_[id(python_obj_to_mylang(key))] = python_obj_to_mylang(value)
 
+    def __repr__(self):
+        import ctypes
+        dict_repr = '{' + ', '.join(
+            f'{ctypes.cast(key, ctypes.py_object).value!r}: {value!r}'
+            for key, value in self.dict_.items()
+        ) + '}'
+        return f'{self.__class__.__name__}({dict_repr}, parent={self.parent!r})'
 
 class Application(Context):
     pass
@@ -49,7 +58,7 @@ current_context = ContextVar[Context]("current_context", default=Context())
 @contextmanager
 def nested_context(dict_: dict[Object, Object]):
     this_context = current_context.get()
-    new_context = Context(this_context, dict_)
+    new_context = Context(dict_, parent=this_context)
     reset_token = current_context.set(new_context)
     try:
         yield new_context

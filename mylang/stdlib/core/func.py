@@ -9,7 +9,7 @@ from ._utils import (
     currently_called_func,
     set_contextvar,
 )
-from ._context import Context, current_context, nested_context
+from ._context import current_context, nested_context
 
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
@@ -47,7 +47,7 @@ class fun(Dict, Generic[TypeReturn]):
             )
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
-        return call(Ref(self), *args, **kwargs)
+        return call(Ref.of(self), *args, **kwargs)
 
     def _m_call_(self, args: Args, /) -> TypeReturn:
         raise NotImplementedError
@@ -56,7 +56,11 @@ class fun(Dict, Generic[TypeReturn]):
 @function_defined_as_class(monkeypatch_methods=False)
 class call(Object):
     def __new__(cls, func_key, *args, **kwargs):
-        if len(args) > 0 and isinstance(mylang_args := args[0], Args):
+        if isinstance(func_key, Args):
+            if len(args) > 0 or len(kwargs) > 0:
+                raise ValueError("If the first argument is of type Args, no other arguments are allowed.")
+            return cls._m_call_(func_key)
+        elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
             if len(args) > 1:
                 raise ValueError("If an argument of type Args is used, it must be the only argument.")
             return cls._m_call_([func_key] + mylang_args)
@@ -79,20 +83,24 @@ class call(Object):
                 obj_to_call = new_context[func_key]
 
             with set_contextvar(currently_called_func, obj_to_call):
-                return obj_to_call._m_call_(
-                    Args.from_dict(dict(enumerate(rest)) | args.keyed_dict())
+                return python_obj_to_mylang(
+                    obj_to_call._m_call_(
+                        Args.from_dict(dict(enumerate(rest)) | args.keyed_dict())
+                    )
                 )
 
 
 @function_defined_as_class
 class get(Object):
-    def _m_call_(self, args: Args, /):
+    @classmethod
+    def _m_call_(cls, args: Args, /):
         raise NotImplementedError
 
 
 @function_defined_as_class
 class set(Object):
-    def _m_call_(self, args: Args, /):
+    @classmethod
+    def _m_call_(cls, args: Args, /):
         context = current_context.get()
         for key, value in args._m_dict_.items():
             context.parent[key] = value

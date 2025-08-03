@@ -25,9 +25,14 @@ def python_obj_to_mylang(obj):
     elif isinstance(obj, int):
         from .primitive import Int
         return Int(obj)
+    elif isinstance(obj, list):
+        from .base import Array
+        return Array.from_list(obj)
     elif obj is None:
         from .primitive import undefined
         return undefined
+    elif obj in all_functions_defined_as_classes:
+        return obj
     else:
         raise NotImplementedError
 
@@ -61,11 +66,6 @@ def mylang_obj_to_python(obj: 'Object'):
         raise NotImplementedError
 
 
-def mylang_dict_from_args_kwargs(*args, **kwargs):
-    """Convert args and kwargs to a Dict."""
-    return python_obj_to_mylang(python_dict_from_args_kwargs)
-
-
 TypeFunc = TypeVar('TypeFunc', bound=FunctionType)
 
 
@@ -95,19 +95,20 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
             # Make sure that the class can never be called by anything other than `call`
             def _m_call_decorator(_m_call_):
                 @functools.wraps(_m_call_)
-                def wrapper(self, *args, **kwargs):
-                    assert currently_called_func.get() is self
-                    return _m_call_(self, *args, **kwargs)
+                def wrapper(*args, **kwargs):
+                    assert currently_called_func.get() is cls
+                    return _m_call_(*args, **kwargs)
                 return wrapper
             cls._m_call_ = _m_call_decorator(cls._m_call_)
 
-            # Use fun.__call__ as cls.__init__
+            # Use fun.__call__ as cls.__new__
             # NOTE: Cannot just do cls.__call__ = fun.__call__ because it would
             # result in a recursive import
             def fun__call__(self, *args, **kwargs):
                 from .func import fun
                 return fun.__call__(self, *args, **kwargs)
-            cls.__init__ = fun__call__
+            cls.__new__ = fun__call__
+            cls.__init__ = lambda self, *args, **kwargs: None
 
         # TODO: initialize parameters and body
         return cls

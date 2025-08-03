@@ -50,7 +50,6 @@ class class_(Object):
 class TypedObject(Object):
     """Same as :class:`Object` but read/assignment is validated against the class definition."""
 
-    pass
 
 
 class Array(Object, Generic[T]):
@@ -66,7 +65,7 @@ class Array(Object, Generic[T]):
     @classmethod
     def from_list(cls, source: list, /):
         obj = cls.__new__(cls)
-        obj._m_array_ = source
+        obj._m_array_ = [python_obj_to_mylang(x) for x in source]
         return obj
 
     def __eq__(self, other):
@@ -166,7 +165,7 @@ class Args(Dict):
         """Get an item from the Args."""
         if isinstance(key, slice):
             from .primitive import Int
-            positional_args = tuple(x for x in self._m_dict_ if isinstance(x, Int))
+            positional_args = tuple(v for k, v in self._m_dict_.items() if isinstance(k, Int))
             return Array.from_list(positional_args[key])
         else:
             return self._m_dict_[python_obj_to_mylang(key)]
@@ -178,9 +177,8 @@ class Args(Dict):
     def __add__(self, other: 'Args' | Iterable, /) -> 'Args':
         """Combine two Args objects."""
         if isinstance(other, self.__class__):
-            combined = self._m_dict_.copy()
-            combined.update(other._m_dict_)
-            return Args.from_dict(combined)
+            positional = (*self[:], *other[:])
+            return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict() | other.keyed_dict())
         elif isinstance(other, Iterable):
             positional = (*self[:], *other)
             return Args.from_dict(
@@ -199,5 +197,13 @@ class Args(Dict):
 
 
 class Ref(Object):
-    def __init__(self, obj: Object):
-        self.obj = obj
+    def __init__(self, key: Object):
+        from ._context import current_context
+        self.obj = current_context.get()[key]
+
+    @classmethod
+    def of(cls, obj: Object):
+        """Create a reference to an object."""
+        instance = super().__new__(cls)
+        instance.obj = obj
+        return instance
