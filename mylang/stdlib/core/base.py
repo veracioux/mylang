@@ -118,6 +118,9 @@ class Dict(Object):
             else:
                 return super().__getattribute__(name)
 
+    def __len__(self):
+        return len(self._m_dict_)
+
     def __iter__(self):
         """Iterate over the keys of the dictionary."""
         return iter(self._m_dict_)

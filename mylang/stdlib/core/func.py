@@ -94,8 +94,12 @@ class call(Object):
 class get(Object):
     @classmethod
     def _m_call_(cls, args: Args, /):
-        raise NotImplementedError
-
+        # TODO: Proper exception type
+        assert len(args) == 1, "get function requires exactly one argument"
+        if isinstance(args[0], Ref):
+            return args[0].obj
+        context = current_context.get()
+        return context[args[0]]
 
 @function_defined_as_class
 class set(Object):

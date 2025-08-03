@@ -5,7 +5,7 @@ from mylang.stdlib.core._utils import (
 )
 from mylang.stdlib.core.base import Args, Array, Object, Ref
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import call, fun, set
+from mylang.stdlib.core.func import call, fun, set, get
 from mylang.stdlib.core.primitive import Int, undefined
 from mylang.stdlib.core._context import Context, current_context
 import pytest
@@ -174,3 +174,40 @@ class Test_call:
             Args(Ref.of(call), Ref.of(call), Ref.of(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
         )
         self.assert_result_correct(result)
+
+
+class Test_get:
+    def test_get_with_mylang_args(self):
+        current_context.get()['key'] = Int(42)
+        result = get(Args('key'))
+        assert result == Int(42)
+
+    def test_get_with_args_kwargs(self):
+        current_context.get()['key'] = Int(42)
+        result = get("key")
+        assert result == Int(42)
+
+    def test_get_ref(self):
+        obj = Object()
+        result = get(Ref.of(obj))
+        assert result is obj
+
+    def test_get_non_existing_key(self):
+        # TODO: Use custom exception
+        with pytest.raises(KeyError):
+            get("non_existing_key")
+
+
+class Test_set_get:
+    def test_set_then_get(self):
+        set(a=1, b=2)
+        result_a = get("a")
+        result_b = get("b")
+        assert result_a == Int(1)
+        assert result_b == Int(2)
+
+    def test_set_key_obtained_using_get(self):
+        set(key='actual_key', actual_key='value')
+        key = get("key")
+        result = get(key)
+        assert result == String('value')
