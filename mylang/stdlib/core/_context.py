@@ -14,9 +14,11 @@ class Context:
         *,
         parent: Optional["Context"] = None,
     ):
+        from .primitive import undefined
         super().__init__()
         self.parent = parent
         self.dict_: dict[int, Object] = {id(key): value for key, value in dict_.items()}
+        self.return_value = undefined
         """Maps the key ID instead of the key itself, so keys can
         be looked up by identity (is) instead of equality (==)."""
 

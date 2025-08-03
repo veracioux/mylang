@@ -1,5 +1,7 @@
 from typing import Any, Generic, TypeVar
 
+from mylang.stdlib.core.primitive import Int
+
 from .base import Args, Array, Dict, Object, Ref
 from ._utils import (
     function_defined_as_class,
@@ -50,7 +52,28 @@ class fun(Dict, Generic[TypeReturn]):
         return call(Ref.of(self), *args, **kwargs)
 
     def _m_call_(self, args: Args, /) -> TypeReturn:
-        raise NotImplementedError
+        # TODO: check args against parameters
+        context = current_context.get()
+        # Populate function parameters in the current context
+        for key, value in args._m_dict_.items():
+            context[key] = value
+        for statement in self.body:
+            # TODO properly handle
+            assert isinstance(statement, Args)
+            if Int(0) not in statement._m_dict_:
+                # If there are no positional arguments, this is an assignment;
+                # call `set`
+                # TODO properly handle
+                assert len(statement) == 1
+                set(statement)
+            else:
+                # Otherwise, this is a function call;
+                # call `call`
+                # TODO properly handle
+                assert len(statement) > 0
+                call(statement)
+
+        return context.return_value
 
 
 @function_defined_as_class(monkeypatch_methods=False)
@@ -108,3 +131,15 @@ class set(Object):
         context = current_context.get()
         for key, value in args._m_dict_.items():
             context.parent[key] = value
+
+
+@function_defined_as_class
+class return_(Object):
+    _m_name_ = "return"
+    @classmethod
+    def _m_call_(cls, args: Args, /):
+        if len(args) != 1:
+            raise ValueError("return requires exactly one argument")
+        context = current_context.get().parent
+        context.return_value = args[0]
+        return context.return_value

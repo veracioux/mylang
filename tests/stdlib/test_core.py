@@ -5,7 +5,7 @@ from mylang.stdlib.core._utils import (
 )
 from mylang.stdlib.core.base import Args, Array, Object, Ref
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import call, fun, set, get
+from mylang.stdlib.core.func import call, fun, return_, set, get
 from mylang.stdlib.core.primitive import Int, undefined
 from mylang.stdlib.core._context import Context, current_context
 import pytest
@@ -95,6 +95,19 @@ class Test_fun:
         )
         assert f.body == Array(Args("call", "something"))
 
+    def test_call(self):
+        """
+        ```
+        fun return_constant {
+            return 42
+        }
+        ```
+        """
+        current_context.get()["return"] = return_
+        f = fun(Args("return_constant", Array.from_list([Args("return", 42)])))
+        result = f()
+        assert result == Int(42)
+
 
 class Test_set:
     def test_call(self):
@@ -157,9 +170,7 @@ class Test_call:
     def test_call_call(self):
         current_context.get()["call"] = call
         current_context.get()["func"] = self.func
-        result = call(
-            "call", "func", "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"
-        )
+        result = call("call", "func", "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
         self.assert_result_correct(result)
 
     def test_call_ref_of_call(self):
@@ -171,19 +182,27 @@ class Test_call:
 
     def test_call_ref_of_call_ref_of_call(self):
         result = call(
-            Args(Ref.of(call), Ref.of(call), Ref.of(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
+            Args(
+                Ref.of(call),
+                Ref.of(call),
+                Ref.of(self.func),
+                "arg0",
+                "arg1",
+                kwarg1="KWARG1",
+                kwarg2="KWARG2",
+            )
         )
         self.assert_result_correct(result)
 
 
 class Test_get:
     def test_get_with_mylang_args(self):
-        current_context.get()['key'] = Int(42)
-        result = get(Args('key'))
+        current_context.get()["key"] = Int(42)
+        result = get(Args("key"))
         assert result == Int(42)
 
     def test_get_with_args_kwargs(self):
-        current_context.get()['key'] = Int(42)
+        current_context.get()["key"] = Int(42)
         result = get("key")
         assert result == Int(42)
 
@@ -207,7 +226,7 @@ class Test_set_get:
         assert result_b == Int(2)
 
     def test_set_key_obtained_using_get(self):
-        set(key='actual_key', actual_key='value')
+        set(key="actual_key", actual_key="value")
         key = get("key")
         result = get(key)
-        assert result == String('value')
+        assert result == String("value")
