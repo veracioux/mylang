@@ -109,7 +109,3 @@ def repl_print(obj: Object) -> None:
         pass
     else:
         print(str(obj._m_repr_()))
-
-
-if __name__ == "__main__":
-    repl()
