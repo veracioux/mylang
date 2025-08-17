@@ -5,6 +5,7 @@ Importing this module makes the built-in objects available in the current contex
 
 from .core import *
 from .core import Object, String
+from .io import echo
 
 
 def __initialize_context():

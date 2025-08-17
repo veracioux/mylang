@@ -43,6 +43,9 @@ class Object:
         initializers = {f"{k}={getattr(self, k)!r}" for k in parameters.keys()}
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
+    def __str__(self):
+        raise NotImplementedError("__str__ is not implemented for this object")
+
     def _m_repr_(self) -> "String":
         """Return a string representation of the object that will be used in the mylang context."""
         raise NotImplementedError("repr is not implemented for this object")
