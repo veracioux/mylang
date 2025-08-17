@@ -1,0 +1,32 @@
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.WS_INLINE -> _WS_INLINE
+%import common.WS
+%import common.NEWLINE
+%import common._STRING_ESC_INNER
+
+BOOL: "true" | "false"
+NULL: "null"
+UNDEFINED: "undefined"
+UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z][a-z0-9]*/i
+?string: ESCAPED_STRING | UNQUOTED_STRING
+
+?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
+
+assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
+
+_ARG_SEPARATION: _WS_INLINE+ | (_WS_INLINE* "," WS*)
+_positional_args: expression [_ARG_SEPARATION] _positional_args*
+_keyed_args: assignment [_ARG_SEPARATION] _keyed_args*
+?args: (_positional_args _keyed_args*) | _keyed_args
+_multiple_args: args args args*
+
+_STATEMENT_SEPARATION: _WS_INLINE* (";" | NEWLINE) WS*
+_statement_list: args | (args _STATEMENT_SEPARATION _statement_list*)
+?statement_list: _statement_list
+
+dict: "(" _WS_INLINE* ((expression _WS_INLINE* "," _WS_INLINE*) | _multiple_args) _WS_INLINE* ")"
+
+?expression: string | primitive | dict | ("(" expression ")")
+
+%ignore _WS_INLINE
