@@ -17,16 +17,6 @@ from ._context import current_context, nested_context
 TypeReturn = TypeVar("TypeReturn", bound=Object)
 
 
-class FunMeta(type):
-    def __instancecheck__(cls, instance: Any, /) -> bool:
-        if super().__instancecheck__(instance):
-            return True
-        elif instance in all_functions_defined_as_classes:
-            return True
-        else:
-            return False
-
-
 class fun(Dict, Generic[TypeReturn]):
     def __init__(self, name: Object, /, *args, **kwargs):
         self.name: Object
