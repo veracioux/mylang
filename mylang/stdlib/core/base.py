@@ -238,6 +238,18 @@ class Args(Dict):
         positional = (*other, *self[:])
         return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict())
 
+    def is_positional_only(self) -> bool:
+        """Check if the Args contains only positional arguments."""
+        return len(self) == len(self[:])
+
+    def is_keyed_only(self) -> bool:
+        """Check if the Args contains only keyed arguments."""
+        return len(self) == len(self.keyed_dict())
+
+    def is_mixed_positional_keyed(self) -> bool:
+        """Check if the Args contains both positional and keyed arguments."""
+        return not self.is_positional_only() and not self.is_keyed_only()
+
 
 class Ref(Object):
     def __init__(self, key: Object):

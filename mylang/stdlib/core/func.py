@@ -1,6 +1,7 @@
-from typing import Generic, TypeVar
+import os
+from typing import TYPE_CHECKING, Generic, TypeVar, Union
 
-from mylang.stdlib.core.primitive import Int
+from .primitive import Int, undefined
 
 from .base import Args, Array, Dict, Object, Ref
 from ._utils import (
@@ -11,9 +12,13 @@ from ._utils import (
     currently_called_func,
     set_contextvar,
 )
-from ._context import current_context, nested_context
+from ._context import current_context, nested_context, parent_context, switch_context
 
 __all__ = ("fun", "call", "get", "set", "return_")
+
+
+if TYPE_CHECKING:
+    from .complex import String
 
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
@@ -66,7 +71,7 @@ class fun(Dict, Generic[TypeReturn]):
                 assert len(statement) > 0
                 call(statement)
 
-        return context.return_value
+        return context.get_return_value()
 
 
 @expose
@@ -145,4 +150,82 @@ class return_(Object):
             raise ValueError("return requires exactly one argument")
         context = current_context.get().parent
         context.return_value = args[0]
-        return context.return_value
+        return context.get_return_value()
+
+
+@expose
+@function_defined_as_class
+class use(Object):
+    """Use code from another file."""
+    __cache: dict[str, Object] = {}
+
+    def __init__(self, source: str, use_cache=True):
+        pass
+
+    @classmethod
+    def _m_call_(cls, args: Args, /):
+        from .complex import String
+
+        # TODO: Generalize validation based on __init__ function signature
+
+        if len(args[:]) != 1:
+            raise ValueError("use requires exactly one positional argument")
+
+        if not isinstance(args[0], String):
+            raise TypeError("use requires a String as the first argument")
+
+        use_cache = True
+        if 'use_cache' in args:
+            use_cache = args['use_cache']
+            from .primitive import Bool
+            if not isinstance(use_cache, Bool):
+                raise TypeError("use_cache must be a Bool")
+
+        # TODO: Use something more advanced
+        unique_id = args[0].value
+
+        if use_cache and unique_id in cls.__cache:
+            # Return cached value if available
+            exported_value = cls.__cache[args[0].value]
+            cls._set_alias_binding_in_caller_context(args[0], exported_value)
+            return exported_value
+
+        # TODO: Use a lookup strategy
+        # TODO: Support Path in addition to String
+        from ...parser import parser, STATEMENT_LIST
+        from ...transformer import Transformer, StatementList
+
+        # TODO: File extension
+        with open(args[0].value + ".my", "r") as f:
+            code = f.read()
+        tree = parser.parse(code, start=STATEMENT_LIST)
+        statement_list = Transformer().transform(tree)
+
+        # TODO: proper exception
+        assert isinstance(statement_list, StatementList)
+
+        # Enter a nested context, execute the module and obtain its exported
+        # value The exported value is either a dict of the module's locals or a
+        # specific return value if return was called from within.
+        exported_value: Object
+        with nested_context({}) as context:
+            statement_list.execute()
+
+            if context.return_value is not None:
+                exported_value = context.return_value
+            else:
+                # TODO: Maybe wrap in a module type?
+                exported_value = Dict.from_dict(context.own_dict())
+
+        cls._set_alias_binding_in_caller_context(args[0], exported_value)
+        cls.__cache[unique_id] = exported_value
+
+        return exported_value
+
+    @classmethod
+    def _set_alias_binding_in_caller_context(cls, name: 'String', exported_value: Object):
+        """Set the alias binding in the caller's context."""
+        # Set the alias binding in the caller's context
+        with parent_context():
+            # TODO: Handle multiple args potentially
+            set(Args.from_dict({name: exported_value}))

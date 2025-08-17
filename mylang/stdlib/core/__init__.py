@@ -12,7 +12,7 @@ from .primitive import (
 )
 from .complex import String, Path
 from .base import Object, Args, Dict, Array, Ref
-from .func import fun, call, set, get, return_
+from .func import fun, call, set, get, return_, use
 
 from ._context import Context, current_context
 
@@ -39,4 +39,5 @@ __all__ = (
     "set",
     "get",
     "return_",
+    "use",
 )

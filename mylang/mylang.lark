@@ -8,7 +8,7 @@
 BOOL: "true" | "false"
 NULL: "null"
 UNDEFINED: "undefined"
-UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z][a-z0-9]*/i
+UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z_][a-z0-9_]*/i
 ?string: ESCAPED_STRING | UNQUOTED_STRING
 
 ?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
@@ -33,7 +33,7 @@ args.1: _explicit_args
 _statement: expression | args
 _statement_separation: (_WS_INLINE* (";" | _NEWLINE) _WS*)+
 // A single expression or multiple statements
-statement_list: _WS* _statement (_statement_separation _statement)*
+statement_list: [_WS* _statement (_statement_separation _statement)*]
 
 // Dict
 dict: "(" _WS* [_explicit_args] _WS* ")"

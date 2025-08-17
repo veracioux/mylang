@@ -76,13 +76,18 @@ all_functions_defined_as_classes: set[type] = set()
 def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun':
     def decorator(cls):
         from .complex import String
+        from .base import Object
 
         # Check the class for disallowed attributes
         if monkeypatch_methods:
-            disallowed_attrs = ('__init__', '__call__')
+            disallowed_attrs = ('__call__',)
             for attr in disallowed_attrs:
                 if attr in vars(cls):
                     raise ValueError(f'class used as a function must not have {attr} method defined')
+
+        # __init__ method, if defined, is used only to advertise the signature
+        if '__init__' in vars(cls):
+            cls.__init__ = Object.__init__
 
         # Register the class as a function
         all_functions_defined_as_classes.add(cls)

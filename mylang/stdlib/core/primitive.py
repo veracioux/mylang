@@ -24,6 +24,9 @@ class Scalar(Primitive, Generic[TypeValue]):
             other == self.value
         )
 
+    def __bool__(self):
+        return bool(self.value)
+
     def __hash__(self):
         return hash(self.value)
 
