@@ -9,7 +9,6 @@ from mylang.stdlib.core import (
     String,
     null,
     undefined,
-    call,
     Array,
 )
 
@@ -42,7 +41,7 @@ class Transformer(_Transformer):
         return String(token.value)
 
     def ESCAPED_STRING(self, token: Token):
-        return String(eval(token.value))
+        return String(eval(token.value))  # pylint: disable=eval-used
 
     def args(self, items: list[Tree | Object]):
         dict_ = {

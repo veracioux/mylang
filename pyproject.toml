@@ -31,3 +31,6 @@ executionEnvironments = [
 [tool.pdm]
 distribution = true
 
+[tool.pylint.messages_control]
+disable = "missing-class-docstring, too-few-public-methods"
+
