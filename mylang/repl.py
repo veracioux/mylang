@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import sys
-import termios
-import tty
 
-from lark import Token, Tree, UnexpectedCharacters
+from lark import Tree, UnexpectedCharacters
 from mylang.parser import parser
 from lark.exceptions import ParseError
+
+
+# This is for debugging purposes, mostly so I can feed it to an LLM
+_parse_history_file = "parse-history.txt"
 
 
 def repl():
@@ -20,13 +21,13 @@ def repl():
     print("Enter: evaluate | Alt+Enter: newline (TODO) | Ctrl+D: exit")
     print()
 
-    buffer = ""
+    buf = ""
 
     # TODO: Handle Alt+Enter to insert a newline without evaluating
 
     while True:
         try:
-            if buffer:
+            if buf:
                 prompt = "... "
             else:
                 prompt = ">>> "
@@ -34,24 +35,24 @@ def repl():
             line = input(prompt)
 
             # Add line to buffer
-            if buffer:
-                buffer += "\n" + line
+            if buf:
+                buf += "\n" + line
             else:
-                buffer = line
+                buf = line
 
             # Evaluate only when the buffer forms a valid statement_list
             # Otherwise insert a newline
             try:
-                if buffer.strip():
-                    tree = parser.parse(buffer, start="statement_list")
-                    if isinstance(tree, Tree):
-                        print(tree.pretty())
-                    elif isinstance(tree, Token):
-                        print(tree.value)
-                    buffer = ""
+                if buf.strip():
+                    tree = parser.parse(buf, start="statement_list")
+                    tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
+                    print(tree_str)
+                    with open(_parse_history_file, "a", encoding="utf-8") as f:
+                        f.write(prompt + buf + "\n")
+                        f.write(tree_str + "\n")
+                    buf = ""
             except (ParseError, UnexpectedCharacters) as e:
-                print(e)
-                buffer += "\n"
+                buf += "\n"
                 # If parsing fails, continue collecting input
                 # This allows multi-line input
                 continue
@@ -63,14 +64,14 @@ def repl():
         except KeyboardInterrupt:
             # Ctrl+C pressed
             print("\nKeyboardInterrupt")
-            buffer = ""
+            buf = ""
             continue
         except ParseError as e:
             print(f"Parse error: {e}")
-            buffer = ""
+            buf = ""
         except Exception as e:
             print(f"Error: {e}")
-            buffer = ""
+            buf = ""
 
 
 if __name__ == "__main__":
