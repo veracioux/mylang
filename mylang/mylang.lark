@@ -2,7 +2,7 @@
 %import common.SIGNED_NUMBER
 %import common.WS_INLINE -> _WS_INLINE
 %import common.WS
-%import common.NEWLINE
+%import common.NEWLINE -> _NEWLINE
 %import common._STRING_ESC_INNER
 
 BOOL: "true" | "false"
@@ -16,16 +16,15 @@ UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z][a-z0-9]*/i
 assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
 
 _ARG_SEPARATION: _WS_INLINE+ | (_WS_INLINE* "," WS*)
-_positional_args: expression [_ARG_SEPARATION] _positional_args*
-_keyed_args: assignment [_ARG_SEPARATION] _keyed_args*
+_positional_args: expression (_ARG_SEPARATION expression)* [_ARG_SEPARATION]
+_keyed_args: assignment (_ARG_SEPARATION assignment)* [_ARG_SEPARATION]
 ?args: (_positional_args _keyed_args*) | _keyed_args
 _multiple_args: args args args*
 
-_STATEMENT_SEPARATION: _WS_INLINE* (";" | NEWLINE) WS*
-_statement_list: args | (args _STATEMENT_SEPARATION _statement_list*)
-?statement_list: _statement_list
+_statement_separation: (_WS_INLINE* (";" | _NEWLINE) WS*)+
+?statement_list: args (_statement_separation args)* [_statement_separation]
 
-dict: "(" _WS_INLINE* ((expression _WS_INLINE* "," _WS_INLINE*) | _multiple_args) _WS_INLINE* ")"
+dict: "(" _WS_INLINE* ((expression _ARG_SEPARATION) | _multiple_args | _keyed_args) _WS_INLINE* ")"
 
 ?expression: string | primitive | dict | ("(" expression ")")
 

@@ -7,6 +7,7 @@ __all__ = ("parser", "EXPRESSION", "STATEMENT_LIST")
 with open(Path(__file__).parent.absolute() / "mylang.lark") as f:
     parser = Lark(
         f,
+        # parser="lalr",
         start=[
             "statement_list",
             "expression",

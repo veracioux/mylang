@@ -12,7 +12,7 @@ Tree.__repr__ = Tree_repr
 
 class TestPrimitive:
     def test_parse_bool(self):
-        t = parser.parse("true")
+        t = parser.parse("true", start="expression")
         assert t.type == "BOOL"
         assert t.value == "true"
 
@@ -91,19 +91,20 @@ class TestAssignment:
         assert len(t.children) == 2
 
         assert t.children[0].data == "dict"
-        assert len(t.children[0].children) == 1
+        assert len(t.children[0].children) == 2
 
-        assert t.children[0].children[0].data == "args"
+        assert t.children[0].children[0].type == "UNQUOTED_STRING"
+        assert t.children[0].children[0].value == "a"
+
+        assert t.children[0].children[1].type == "UNQUOTED_STRING"
+        assert t.children[0].children[1].value == "b"
 
 
 class TestArgs:
     def test_parse_args_positional_single(self):
         t = parser.parse("a", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 1
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
+        assert t.type == "UNQUOTED_STRING"
+        assert t.value == "a"
 
     def test_parse_args_positional_multiple(self):
         t = parser.parse("a b", start="args")
@@ -118,16 +119,15 @@ class TestArgs:
 
     def test_parse_args_keyed_single(self):
         t = parser.parse("a=1", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 1
 
-        assert t.children[0].data == "assignment"
+        assert t.data == "assignment"
+        assert len(t.children) == 2
 
-        assert t.children[0].children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].children[0].value == "a"
+        assert t.children[0].type == "UNQUOTED_STRING"
+        assert t.children[0].value == "a"
 
-        assert t.children[0].children[1].type == "SIGNED_NUMBER"
-        assert t.children[0].children[1].value == "1"
+        assert t.children[1].type == "SIGNED_NUMBER"
+        assert t.children[1].value == "1"
 
     def test_parse_args_positional_keyed(self):
         t = parser.parse("a b c=1 d=2", start="args")
