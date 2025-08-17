@@ -1,11 +1,11 @@
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from mylang.stdlib.core.primitive import Int
 
 from .base import Args, Array, Dict, Object, Ref
 from ._utils import (
+    expose,
     function_defined_as_class,
-    all_functions_defined_as_classes,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
     currently_called_func,
@@ -19,6 +19,7 @@ __all__ = ("fun", "call", "get", "set", "return_")
 TypeReturn = TypeVar("TypeReturn", bound=Object)
 
 
+@expose
 class fun(Dict, Generic[TypeReturn]):
     def __init__(self, name: Object, /, *args, **kwargs):
         self.name: Object
@@ -68,6 +69,7 @@ class fun(Dict, Generic[TypeReturn]):
         return context.return_value
 
 
+@expose
 @function_defined_as_class(monkeypatch_methods=False)
 class call(Object):
     def __new__(cls, func_key, *args, **kwargs):
@@ -109,6 +111,7 @@ class call(Object):
                 )
 
 
+@expose
 @function_defined_as_class
 class get(Object):
     @classmethod
@@ -121,6 +124,7 @@ class get(Object):
         return context[args[0]]
 
 
+@expose
 @function_defined_as_class
 class set(Object):
     @classmethod
@@ -130,6 +134,7 @@ class set(Object):
             context.parent[key] = value
 
 
+@expose
 @function_defined_as_class
 class return_(Object):
     _m_name_ = "return"

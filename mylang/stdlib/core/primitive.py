@@ -30,6 +30,10 @@ class Scalar(Primitive, Generic[TypeValue]):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value!r})"
 
+    def _m_repr_(self):
+        from .complex import String
+        return String(repr(self.value))
+
 
 class Number(Scalar[TypeValue], Generic[TypeValue]):
     pass
@@ -44,21 +48,25 @@ class Float(Number[float]):
 
 
 class Bool(Scalar[bool]):
-    pass
+    def _m_repr_(self):
+        return "true" if self.value else "false"
 
 
 class Empty(Primitive, ABC):
-    pass
+    def __bool__(self):
+        return False
 
 
 @final
 class Null(Empty):
-    pass
+    def _m_repr_(self):
+        return "null"
 
 
 @final
 class Undefined(Empty):
-    pass
+    def _m_repr_(self):
+        return "undefined"
 
 
 # TODO: uncomment

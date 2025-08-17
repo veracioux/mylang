@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import ctypes
 from typing import Any, Optional
 
 from mylang.stdlib.core._utils import python_obj_to_mylang
@@ -50,8 +51,12 @@ class Context:
         ) + '}'
         return f'{self.__class__.__name__}({dict_repr}, parent={self.parent!r})'
 
-class Application(Context):
-    pass
+    def dict(self):
+        """Return a copy of the context's dictionary."""
+        return {
+            ctypes.cast(key, ctypes.py_object).value: value
+            for key, value in self.dict_.items()
+        }
 
 
 current_context = ContextVar[Context]("current_context", default=Context())

@@ -18,6 +18,9 @@ class String(Object):
     def _m_init_(self, value: str = ""):
         pass
 
+    def _m_repr_(self):
+        return String(repr(self.value))
+
     def __eq__(self, other: Any):
         return isinstance(other, self.__class__) and self.value == other.value
 
@@ -26,6 +29,9 @@ class String(Object):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.value!r})'
+
+    def __str__(self):
+        return self.value
 
 
 class Path(Object):

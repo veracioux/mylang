@@ -1,5 +1,5 @@
 from lark import Transformer as _Transformer, Token, Tree
-from mylang.stdlib.core import (
+from .stdlib.core import (
     Args,
     Bool,
     Dict,
@@ -10,13 +10,27 @@ from mylang.stdlib.core import (
     null,
     undefined,
     Array,
+    call,
+    set,
 )
 
 __all__ = ("Transformer", "StatementList")
 
 
 class StatementList(Array):
-    pass
+    def execute(self) -> Object:
+        for i, statement in enumerate(self):
+            result: Object
+            args = Args(statement)
+
+            # This is an assignment(s)-only statement
+            if len(args[:]) == 0:
+                result = set(args)
+            else:
+                result = call(args)
+
+            if i == len(self) - 1:
+                return result
 
 
 class Transformer(_Transformer):
@@ -62,4 +76,4 @@ class Transformer(_Transformer):
         return Dict(self.args(items))
 
     def statement_list(self, statements: list[Object]):
-        return StatementList(*statements)
+        return StatementList.from_list(statements)

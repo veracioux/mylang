@@ -3,6 +3,7 @@ from contextvars import ContextVar
 import functools
 from types import FunctionType
 from typing import TYPE_CHECKING, Any, TypeVar
+from weakref import WeakKeyDictionary, WeakSet
 
 
 if TYPE_CHECKING:
@@ -121,10 +122,21 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
 
 currently_called_func = ContextVar('currently_called_func', default=None)
 
+_exposed_objects = set[int]()
 
-def expose(obj: 'Object'):
+
+TypeObject = TypeVar('TypeObject', bound='Object')
+
+
+def expose(obj: TypeObject):
     """Expose the object outside of Python."""
-    raise NotImplementedError
+    _exposed_objects.add(id(obj))
+    return obj
+
+
+def is_exposed(obj: 'Object'):
+    """Check if the object is exposed outside of Python."""
+    return id(obj) in _exposed_objects
 
 
 @contextmanager

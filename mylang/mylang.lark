@@ -36,7 +36,7 @@ _statement_separation: (_WS_INLINE* (";" | _NEWLINE) _WS*)+
 statement_list: _WS* _statement (_statement_separation _statement)*
 
 // Dict
-dict: "(" _WS* _explicit_args _WS* ")"
+dict: "(" _WS* [_explicit_args] _WS* ")"
 
 // Expression - any expression that can be evaluated to produce a value
 ?expression: string | primitive | dict | ("(" expression ")")
