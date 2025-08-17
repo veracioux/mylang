@@ -3,6 +3,9 @@ from typing import Any
 from .base import Args, Object
 
 
+__all__ = ('String', 'Path')
+
+
 class String(Object):
     @functools.cache
     def __new__(cls, *args, **kwargs):

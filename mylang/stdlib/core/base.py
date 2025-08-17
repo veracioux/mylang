@@ -80,6 +80,10 @@ class Array(Object, Generic[T]):
     def __iter__(self):
         return iter(self._m_array_)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}.from_list({self._m_array_!r})"
+
+
 
 class Dict(Object):
     """An object that contains a mapping of keys to values."""
@@ -127,13 +131,7 @@ class Dict(Object):
 
     def __repr__(self):
         get_from_dict_repr = lambda: f'{self.__class__.__name__}.from_dict({mylang_obj_to_python(self._m_dict_)!r})'
-        if type(self) is Dict:
-            return get_from_dict_repr()
-        else:
-            try:
-                return super().__repr__()
-            except AttributeError:
-                return get_from_dict_repr()
+        return get_from_dict_repr()
 
     def __eq__(self, value: object, /) -> bool:
         return isinstance(value, self.__class__) and self._m_dict_ == value._m_dict_

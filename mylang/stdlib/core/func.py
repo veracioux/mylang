@@ -13,6 +13,8 @@ from ._utils import (
 )
 from ._context import current_context, nested_context
 
+__all__ = ("fun", "call", "get", "set", "return_")
+
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
 
@@ -71,11 +73,15 @@ class call(Object):
     def __new__(cls, func_key, *args, **kwargs):
         if isinstance(func_key, Args):
             if len(args) > 0 or len(kwargs) > 0:
-                raise ValueError("If the first argument is of type Args, no other arguments are allowed.")
+                raise ValueError(
+                    "If the first argument is of type Args, no other arguments are allowed."
+                )
             return cls._m_call_(func_key)
         elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
             if len(args) > 1:
-                raise ValueError("If an argument of type Args is used, it must be the only argument.")
+                raise ValueError(
+                    "If an argument of type Args is used, it must be the only argument."
+                )
             return cls._m_call_([func_key] + mylang_args)
         else:
             return cls._m_call_(
@@ -114,6 +120,7 @@ class get(Object):
         context = current_context.get()
         return context[args[0]]
 
+
 @function_defined_as_class
 class set(Object):
     @classmethod
@@ -126,6 +133,7 @@ class set(Object):
 @function_defined_as_class
 class return_(Object):
     _m_name_ = "return"
+
     @classmethod
     def _m_call_(cls, args: Args, /):
         if len(args) != 1:

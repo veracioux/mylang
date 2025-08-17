@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from lark import Tree, UnexpectedCharacters
-from mylang.parser import parser
-from lark.exceptions import ParseError
+from lark import Tree, ParseError, UnexpectedCharacters
 
+from mylang.parser import parser
+from mylang.transformer import Transformer
 
 # This is for debugging purposes, mostly so I can feed it to an LLM
 _parse_history_file = "parse-history.txt"
@@ -46,16 +46,19 @@ def repl():
                 if buf.strip():
                     tree = parser.parse(buf, start="statement_list")
                     tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
-                    print(tree_str)
+                    print("Syntax tree:", tree_str, sep="\n")
                     with open(_parse_history_file, "a", encoding="utf-8") as f:
                         f.write(prompt + buf + "\n")
                         f.write(tree_str + "\n")
                     buf = ""
-            except (ParseError, UnexpectedCharacters) as e:
+            except (ParseError, UnexpectedCharacters):
                 buf += "\n"
                 # If parsing fails, continue collecting input
                 # This allows multi-line input
                 continue
+
+            transformed = Transformer().transform(tree)
+            print("Transformed:", repr(transformed), sep="\n")
 
         except EOFError:
             # Ctrl+D pressed

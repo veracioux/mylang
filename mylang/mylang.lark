@@ -27,11 +27,13 @@ _explicit_args: _positional_args
               | _keyed_args
               | ((_positional_args | expression) _ARG_SEPARATION _keyed_args)
 
-_args: expression | _explicit_args
 args.1: _explicit_args
 
+// List of statements
+_statement: expression | args
 _statement_separation: (_WS_INLINE* (";" | _NEWLINE) _WS*)+
-?statement_list: (_args | args) (_statement_separation (args | _args))* [_statement_separation]
+// A single expression or multiple statements
+statement_list: _WS* _statement (_statement_separation _statement)*
 
 // Dict
 dict: "(" _WS* _explicit_args _WS* ")"
