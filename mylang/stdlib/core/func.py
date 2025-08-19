@@ -1,7 +1,6 @@
-import os
-from typing import TYPE_CHECKING, Generic, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, TypeVar
 
-from .primitive import Int, undefined
+from .primitive import Int
 
 from .base import Args, Array, Dict, Object, Ref
 from ._utils import (
@@ -12,14 +11,13 @@ from ._utils import (
     currently_called_func,
     set_contextvar,
 )
-from ._context import current_context, nested_context, parent_context, switch_context
+from ._context import current_context, nested_context, parent_context
 
 __all__ = ("fun", "call", "get", "set", "return_")
 
 
 if TYPE_CHECKING:
     from .complex import String
-
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
 
@@ -36,6 +34,7 @@ class fun(Dict, Generic[TypeReturn]):
         last_positional_index = args.get_last_positional_index()
         if last_positional_index is not None and last_positional_index >= 1:
             self.body = args[last_positional_index]
+            # assert isinstance(self.body, Array), "Body must be an Array of Args"
             if last_positional_index >= 1:
                 self.name = args[0]
             self.parameters = python_obj_to_mylang(
@@ -194,7 +193,7 @@ class use(Object):
         # TODO: Use a lookup strategy
         # TODO: Support Path in addition to String
         from ...parser import parser, STATEMENT_LIST
-        from ...transformer import Transformer, StatementList
+        from ...transformer import Transformer
 
         # TODO: File extension
         with open(args[0].value + ".my", "r") as f:
@@ -226,3 +225,45 @@ class use(Object):
         with parent_context():
             # TODO: Handle multiple args potentially
             set(Args.from_dict({name: exported_value}))
+
+
+class StatementList(Array):
+    def execute(self) -> Object:
+        from . import Object, Args, set, call
+        for i_statement, statement in enumerate(self):
+            result: Object
+            # Make sure an expression is converted to Args. If already Args, it
+            # won't be modified
+            args = Args(statement)
+
+            # Iterate through all top-level items (positional args + keys + values)
+            # and make sure that if they are an ExecutionBlock, it gets executed.
+            for i_posarg, posarg in enumerate(args[:]):
+                if isinstance(posarg, ExecutionBlock):
+                    args[i_posarg] = posarg.execute()
+            for key, value in args.keyed_dict().items():
+                if isinstance(key, ExecutionBlock):
+                    key = key.execute()
+
+                args[key] = (
+                    value.execute()
+                    if isinstance(value, ExecutionBlock)
+                    else value
+                )
+
+            if args.is_keyed_only():
+                result = set(args)
+            else:
+                result = call(args)
+
+            if i_statement == len(self) - 1:
+                return result
+
+    def _m_repr_(self):
+        return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
+
+
+class ExecutionBlock(StatementList):
+    def execute(self) -> Object:
+        with nested_context({}):
+            return super().execute()

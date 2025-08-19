@@ -1,5 +1,6 @@
 import functools
 from typing import Any
+
 from .base import Args, Object
 
 

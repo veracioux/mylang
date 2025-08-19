@@ -1,5 +1,6 @@
 from lark import Token, Tree
-from mylang.transformer import Transformer, StatementList
+from mylang.transformer import Transformer
+from mylang.stdlib.core.func import StatementList
 from mylang.stdlib.core import (
     Args,
     Bool,
