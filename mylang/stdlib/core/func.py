@@ -146,6 +146,7 @@ class return_(Object):
 
     @classmethod
     def _m_call_(cls, args: Args, /):
+        # TODO: Make sure return skips execution of remaining statements
         if len(args) != 1:
             raise ValueError("return requires exactly one argument")
         context = current_context.get().parent
@@ -199,17 +200,13 @@ class use(Object):
         with open(args[0].value + ".my", "r") as f:
             code = f.read()
         tree = parser.parse(code, start=STATEMENT_LIST)
-        statement_list = Transformer().transform(tree)
-
-        # TODO: proper exception
-        assert isinstance(statement_list, StatementList)
 
         # Enter a nested context, execute the module and obtain its exported
         # value The exported value is either a dict of the module's locals or a
         # specific return value if return was called from within.
         exported_value: Object
         with nested_context({}) as context:
-            statement_list.execute()
+            Transformer().transform(tree)
 
             if context.return_value is not None:
                 exported_value = context.return_value

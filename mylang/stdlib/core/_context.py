@@ -64,7 +64,7 @@ class Context:
         return self.return_value if self.return_value is not None else undefined
 
 
-current_context = ContextVar[Context]("current_context", default=Context())
+current_context = ContextVar[Context]("current_context", default=None)
 
 
 @contextmanager

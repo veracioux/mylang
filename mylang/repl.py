@@ -4,7 +4,7 @@ import traceback
 
 from lark import ParseError, Tree, UnexpectedCharacters
 
-from mylang.parser import parser
+from mylang.parser import STATEMENT_LIST, parser
 from mylang.stdlib.core import Args, undefined
 from mylang.stdlib.core.base import Object
 from mylang.transformer import StatementList, Transformer
@@ -57,9 +57,13 @@ def repl():
             # Otherwise insert a newline
             try:
                 if buf.strip():
-                    tree = parser.parse(buf, start="statement_list")
+                    tree = parser.parse(buf, start=STATEMENT_LIST)
                     tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
-                    # print("\tSyntax tree:", tree_str, sep="\n\t")
+                    print(
+                        "  Syntax tree:",
+                        "\n    ".join(line for line in tree_str.splitlines()),
+                        sep="\n    ",
+                    )
                     with open(_parse_history_file, "a", encoding="utf-8") as f:
                         f.write(prompt + buf + "\n")
                         f.write(tree_str + "\n")
@@ -70,10 +74,10 @@ def repl():
                 # This allows multi-line input
                 continue
 
-            transformed = Transformer().transform(tree)
-            # print("\tTransformed:", repr(transformed), sep="\n\t")
+            statement_list = Transformer().transform(tree)
+
             try:
-                evaluated = evaluate(transformed)
+                evaluated = evaluate(statement_list)
                 repl_print(evaluated)
             except Exception as e:
                 buf = ""

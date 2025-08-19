@@ -1,5 +1,5 @@
 import inspect
-from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
 
 from ._utils import (
     mylang_obj_to_python,
@@ -75,6 +75,7 @@ class Array(Object, Generic[T]):
         assert all(isinstance(k, Int) for k in args)
         self._m_array_: list[Object] = list(args._m_dict_.values())
 
+    # TODO: Rename to from_iterable
     @classmethod
     def from_list(cls, source: list, /):
         obj = cls.__new__(cls)
@@ -107,6 +108,16 @@ class Array(Object, Generic[T]):
 
     def __repr__(self):
         return f"{self.__class__.__name__}.from_list({self._m_array_!r})"
+
+    def _m_repr_(self):
+        from .complex import String
+
+        return String(
+            "("
+            + "; ".join(str(x._m_repr_()) for x in self)
+            + (";" if len(self) < 2 else "")
+            + ")"
+        )
 
 
 class Dict(Object):
@@ -169,6 +180,15 @@ class Dict(Object):
         """Iterate over the keys of the dictionary."""
         return iter(self._m_dict_)
 
+    def __setitem__(self, key: Any, value: Any, /):
+        return self._m_dict_.__setitem__(
+            python_obj_to_mylang(key),
+            python_obj_to_mylang(value),
+        )
+
+    def __getitem__(self, key: Any, /):
+        return self._m_dict_.__getitem__(python_obj_to_mylang(key))
+
     def __repr__(self):
         get_from_dict_repr = (
             lambda: f"{self.__class__.__name__}.from_dict({mylang_obj_to_python(self._m_dict_)!r})"
@@ -180,12 +200,19 @@ class Dict(Object):
 
 
 # TODO: Check if there are any gaps in the positional argument indexes?
+@final
 class Args(Dict):
     """Represents an unpacked Dict.
 
     Right now it does nothing extra by itself, but various contexts treat it
     differently than :class:`Dict`.
     """
+
+    def __new__(cls, *args: Any, **kwargs: Any):
+        # Make Args(args) where isinstance(args, Args) return args
+        if len(kwargs) == 0 and len(args) == 1 and isinstance(args[0], Args):
+            return args[0]
+        return super().__new__(cls)
 
     def get_last_positional_index(self):
         from .primitive import Int
@@ -240,6 +267,26 @@ class Args(Dict):
             return NotImplemented
         positional = (*other, *self[:])
         return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict())
+
+    def _m_repr_(self):
+        from .complex import String
+        positional_args = self[:]
+        keyed_args = self.keyed_dict()
+        string = ", ".join(
+            filter(
+                lambda x: x,
+                (
+                    ", ".join(str(arg._m_repr_()) for arg in positional_args),
+                    ", ".join(
+                        f"{k._m_repr_()}={v._m_repr_()}" for k, v in keyed_args.items()
+                    ),
+                )
+            )
+        )
+        if len(positional_args) == 1 and len(keyed_args) == 0:
+            string += ","
+
+        return String(string)
 
     def is_positional_only(self) -> bool:
         """Check if the Args contains only positional arguments."""
