@@ -90,8 +90,8 @@ class Test_fun:
     def test_construct(self):
         f = fun(Args("test", "x", StatementList(Args("call", "something")), a="A", b="B"))
         assert f.name == String("test")
-        assert f.parameters == python_obj_to_mylang(
-            {0: "test", 1: "x", "a": "A", "b": "B"}
+        assert f.parameters == Args.from_dict(
+            {0: "x", "a": "A", "b": "B"}
         )
         assert f.body == StatementList(Args("call", "something"))
         assert current_context.get()["test"] is f
@@ -108,6 +108,8 @@ class Test_fun:
         f = fun(Args("return_constant", StatementList.from_list([Args("return", 42)])))
         result = f()
         assert result == Int(42)
+
+    # TODO: Test arg to parameter binding
 
 
 class Test_set:

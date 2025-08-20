@@ -38,8 +38,8 @@ class fun(Object, Generic[TypeReturn]):
             assert isinstance(func.body, StatementList), "Body must be a StatementList"
             if last_positional_index >= 1:
                 func.name = args[0]
-            func.parameters = python_obj_to_mylang(
-                {k: v for k, v in args._m_dict_.items() if k != last_positional_index}
+            func.parameters = Args.from_dict(
+                dict(enumerate(args[1:-1])) | args.keyed_dict()
             )
             current_context.get().parent[func.name] = func
             return func
@@ -52,9 +52,11 @@ class fun(Object, Generic[TypeReturn]):
     def _m_call_(self, args: Args, /) -> TypeReturn:
         # TODO: check args against parameters
         context = current_context.get()
+        for i, posarg in enumerate(self.parameters[:]):
+            context[posarg] = args[i]
         # Populate function parameters in the current context
-        for key, value in args._m_dict_.items():
-            context[key] = value
+        for key, default_value in self.parameters.keyed_dict():
+            context[key] = args.keyed_dict().get(key, default_value)
 
         return self.body.execute()
 
