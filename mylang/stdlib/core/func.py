@@ -1,6 +1,5 @@
+from types import MethodType
 from typing import TYPE_CHECKING, Generic, TypeVar
-
-from .primitive import Int
 
 from .base import Args, Array, Dict, Object, Ref
 from ._utils import (
@@ -23,27 +22,29 @@ TypeReturn = TypeVar("TypeReturn", bound=Object)
 
 
 @expose
-class fun(Dict, Generic[TypeReturn]):
+@function_defined_as_class
+class fun(Object, Generic[TypeReturn]):
     def __init__(self, name: Object, /, *args, **kwargs):
         self.name: Object
         self.parameters: Dict
-        self.body: Array[Args]
+        self.body: StatementList
         super().__init__(name, *args, **kwargs)
 
-    def _m_init_(self, args: "Args", /):
+    def _m_classcall_(cls, args: "Args", /):
+        func = super().__new__(cls)
         last_positional_index = args.get_last_positional_index()
         if last_positional_index is not None and last_positional_index >= 1:
-            self.body = args[last_positional_index]
-            # assert isinstance(self.body, Array), "Body must be an Array of Args"
+            func.body = args[last_positional_index]
+            assert isinstance(func.body, StatementList), "Body must be a StatementList"
             if last_positional_index >= 1:
-                self.name = args[0]
-            self.parameters = python_obj_to_mylang(
+                func.name = args[0]
+            func.parameters = python_obj_to_mylang(
                 {k: v for k, v in args._m_dict_.items() if k != last_positional_index}
             )
+            current_context.get().parent[func.name] = func
+            return func
         else:
-            raise ValueError(
-                "Function requires at least two positional arguments - name and body"
-            )
+            assert False, "Function requires at least two positional arguments - name and body"
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
         return call(Ref.of(self), *args, **kwargs)
@@ -54,23 +55,8 @@ class fun(Dict, Generic[TypeReturn]):
         # Populate function parameters in the current context
         for key, value in args._m_dict_.items():
             context[key] = value
-        for statement in self.body:
-            # TODO properly handle
-            assert isinstance(statement, Args)
-            if Int(0) not in statement._m_dict_:
-                # If there are no positional arguments, this is an assignment;
-                # call `set`
-                # TODO properly handle
-                assert len(statement) == 1
-                set(statement)
-            else:
-                # Otherwise, this is a function call;
-                # call `call`
-                # TODO properly handle
-                assert len(statement) > 0
-                call(statement)
 
-        return context.get_return_value()
+        return self.body.execute()
 
 
 @expose
@@ -82,23 +68,23 @@ class call(Object):
                 raise ValueError(
                     "If the first argument is of type Args, no other arguments are allowed."
                 )
-            return cls._m_call_(func_key)
+            return cls._m_classcall_(None, func_key)
         elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
             if len(args) > 1:
                 raise ValueError(
                     "If an argument of type Args is used, it must be the only argument."
                 )
-            return cls._m_call_([func_key] + mylang_args)
+            return cls._m_classcall_(None, [func_key] + mylang_args)
         else:
-            return cls._m_call_(
+            return cls._m_classcall_(
+                None,
                 Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs))
             )
 
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, func_key, *args, **kwargs):
+        super().__init__(func_key, *args, **kwargs)
 
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
         with nested_context(args._m_dict_) as new_context:
             obj_to_call: Object
@@ -107,19 +93,22 @@ class call(Object):
             else:
                 obj_to_call = new_context[func_key]
 
-            with set_contextvar(currently_called_func, obj_to_call):
-                return python_obj_to_mylang(
-                    obj_to_call._m_call_(
-                        Args.from_dict(dict(enumerate(rest)) | args.keyed_dict())
-                    )
-                )
+            if isinstance(obj_to_call, type):
+                # Function defined as class
+                python_callable = obj_to_call._m_classcall_
+            else:
+                # Regular MyLang callable
+                python_callable = obj_to_call._m_call_.__func__
+
+            with set_contextvar(currently_called_func, python_callable):
+                fun_args = Args.from_dict(dict(enumerate(rest)) | args.keyed_dict())
+                return python_callable(obj_to_call, fun_args)
 
 
 @expose
 @function_defined_as_class
 class get(Object):
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
         if isinstance(args[0], Ref):
@@ -131,11 +120,12 @@ class get(Object):
 @expose
 @function_defined_as_class
 class set(Object):
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /):
+        from .primitive import undefined
         context = current_context.get()
         for key, value in args._m_dict_.items():
             context.parent[key] = value
+        return undefined
 
 
 @expose
@@ -143,8 +133,7 @@ class set(Object):
 class return_(Object):
     _m_name_ = "return"
 
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /):
         # TODO: Make sure return skips execution of remaining statements
         if len(args) != 1:
             raise ValueError("return requires exactly one argument")
@@ -159,11 +148,10 @@ class use(Object):
     """Use code from another file."""
     __cache: dict[str, Object] = {}
 
-    def __init__(self, source: str, use_cache=True):
-        pass
+    def __init__(self, source: str, /, *, use_cache=True):
+        super().__init__(source, use_cache=use_cache)
 
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /):
         from .complex import String
 
         # TODO: Generalize validation based on __init__ function signature
@@ -184,10 +172,10 @@ class use(Object):
         # TODO: Use something more advanced
         unique_id = args[0].value
 
-        if use_cache and unique_id in cls.__cache:
+        if use_cache and unique_id in use.__cache:
             # Return cached value if available
-            exported_value = cls.__cache[args[0].value]
-            cls._set_alias_binding_in_caller_context(args[0], exported_value)
+            exported_value = use.__cache[args[0].value]
+            use._set_alias_binding_in_caller_context(args[0], exported_value)
             return exported_value
 
         # TODO: Use a lookup strategy
@@ -213,8 +201,8 @@ class use(Object):
                 # TODO: Maybe wrap in a module type?
                 exported_value = Dict.from_dict(context.own_dict())
 
-        cls._set_alias_binding_in_caller_context(args[0], exported_value)
-        cls.__cache[unique_id] = exported_value
+        use._set_alias_binding_in_caller_context(args[0], exported_value)
+        use.__cache[unique_id] = exported_value
 
         return exported_value
 
@@ -260,6 +248,7 @@ class StatementList(Array):
                 return result
 
     def _m_repr_(self):
+        from .complex import String
         return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
 
 

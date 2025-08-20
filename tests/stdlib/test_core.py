@@ -5,7 +5,7 @@ from mylang.stdlib.core._utils import (
 )
 from mylang.stdlib.core.base import Args, Array, Object, Ref
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import call, fun, return_, set, get
+from mylang.stdlib.core.func import StatementList, call, fun, return_, set, get
 from mylang.stdlib.core.primitive import Int, undefined
 from mylang.stdlib.core._context import Context, current_context
 import pytest
@@ -88,12 +88,13 @@ class TestArray:
 
 class Test_fun:
     def test_construct(self):
-        f = fun(Args("test", "x", Array(Args("call", "something")), a="A", b="B"))
+        f = fun(Args("test", "x", StatementList(Args("call", "something")), a="A", b="B"))
         assert f.name == String("test")
         assert f.parameters == python_obj_to_mylang(
             {0: "test", 1: "x", "a": "A", "b": "B"}
         )
-        assert f.body == Array(Args("call", "something"))
+        assert f.body == StatementList(Args("call", "something"))
+        assert current_context.get()["test"] is f
 
     def test_call(self):
         """
@@ -104,7 +105,7 @@ class Test_fun:
         ```
         """
         current_context.get()["return"] = return_
-        f = fun(Args("return_constant", Array.from_list([Args("return", 42)])))
+        f = fun(Args("return_constant", StatementList.from_list([Args("return", 42)])))
         result = f()
         assert result == Int(42)
 
@@ -133,9 +134,8 @@ class Test_set:
 class Test_call:
     @function_defined_as_class
     class func(Object):
-        @classmethod
-        def _m_call_(self, args: Args, /):
-            return ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]
+        def _m_classcall_(self, args: Args, /):
+            return Array.from_list(["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]])
 
     def assert_result_correct(self, result):
         assert isinstance(result, Array)

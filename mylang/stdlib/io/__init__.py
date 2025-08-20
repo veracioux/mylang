@@ -13,7 +13,6 @@ __all__ = ("echo",)
 class echo(Object):
     """Echoes the input value to stdout."""
 
-    @classmethod
-    def _m_call_(cls, args: Args, /):
+    def _m_classcall_(self, args: Args, /):
         """Prints the input value to stdout."""
         print(*(str(arg) for arg in args[:]))

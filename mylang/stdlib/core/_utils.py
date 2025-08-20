@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
-from types import FunctionType
+from types import FunctionType, MethodType, MethodWrapperType
 from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakKeyDictionary, WeakSet
 
@@ -78,43 +78,35 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
         from .complex import String
         from .base import Object
 
-        # Check the class for disallowed attributes
-        if monkeypatch_methods:
-            disallowed_attrs = ('__call__',)
-            for attr in disallowed_attrs:
-                if attr in vars(cls):
-                    raise ValueError(f'class used as a function must not have {attr} method defined')
-
         # __init__ method, if defined, is used only to advertise the signature
         if '__init__' in vars(cls):
-            cls.__init__ = Object.__init__
+            del cls.__init__
 
         # Register the class as a function
         all_functions_defined_as_classes.add(cls)
 
-        # Treating the class as a function,
-
         # Set the function name
-        cls.name = python_obj_to_mylang(cls._m_name_) if hasattr(cls, '_m_name_') else String(cls.__name__)
+        cls.name = (
+            python_obj_to_mylang(cls._m_name_)
+            if hasattr(cls, '_m_name_')
+            else String(cls.__name__)
+        )
 
         if monkeypatch_methods:
-            # Make sure that the class can never be called by anything other than `call`
-            def _m_call_decorator(_m_call_):
-                @functools.wraps(_m_call_)
-                def wrapper(*args, **kwargs):
-                    assert currently_called_func.get() is cls
-                    return _m_call_(*args, **kwargs)
-                return wrapper
-            cls._m_call_ = _m_call_decorator(cls._m_call_)
+            if hasattr(cls, '_m_classcall_'):
+                cls._m_classcall_ = only_callable_by_call_decorator(cls._m_classcall_)
+            if hasattr(cls, '_m_call_'):
+                cls._m_call_ = only_callable_by_call_decorator(cls._m_call_)
 
-            # Use fun.__call__ as cls.__new__
-            # NOTE: Cannot just do cls.__call__ = fun.__call__ because it would
-            # result in a recursive import
-            def fun__call__(self, *args, **kwargs):
-                from .func import fun
-                return fun.__call__(self, *args, **kwargs)
-            cls.__new__ = fun__call__
-            cls.__init__ = lambda self, *args, **kwargs: None
+            # Make sure that cls(...) will call the function via `call`
+            def __new__(cls, *args, **kwargs):
+                from .func import call
+                from .base import Ref
+                if currently_called_func.get() is __new__:
+                    with set_contextvar(currently_called_func, cls._m_classcall_):
+                        return cls._m_classcall_(*args, **kwargs)
+                return call(Ref.of(cls), *args, **kwargs)
+            cls.__new__ = __new__
 
         # TODO: initialize parameters and body
         return cls
@@ -126,8 +118,11 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
 
 
 currently_called_func = ContextVar('currently_called_func', default=None)
+"""Used by `only_callable_by_call_decorator` to ensure that a function can only
+be called from `call`."""
 
 _exposed_objects = set[int]()
+"""Holds all objects that are exposed outside of Python, in the context of MyLang."""
 
 
 TypeObject = TypeVar('TypeObject', bound='Object')
@@ -136,6 +131,8 @@ TypeObject = TypeVar('TypeObject', bound='Object')
 def expose(obj: TypeObject):
     """Expose the object outside of Python."""
     _exposed_objects.add(id(obj))
+    # TODO: Make sure that callables are decorated by only_callable_by_call_decorator
+    # (need to determine how to recognize something as a callable)
     return obj
 
 
@@ -152,3 +149,16 @@ def set_contextvar(contextvar: 'ContextVar', value: Any):
         yield
     finally:
         contextvar.reset(reset_token)
+
+
+def only_callable_by_call_decorator(func):
+    """Decorator to ensure that a function can only be called from `call`.
+
+    Call sets `currently_called_func` to the function being called, and this
+    verifies that that is the case.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        assert currently_called_func.get() is wrapper, f"MyLang-exposed callable can only be called from `call`"
+        return func(*args, **kwargs)
+    return wrapper

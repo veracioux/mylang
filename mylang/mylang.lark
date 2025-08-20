@@ -38,7 +38,7 @@ statement_list: [_WS* _statement (_statement_separation _statement)*] _statement
 
 // Dict
 // Priority 2 is given over array's priority 1
-dict.2: "(" _WS* [_explicit_args] _WS* ")"
+dict.2: "(" _WS* [_explicit_args] _WS_INLINE* ")"
 
 // Array
 array.1: "(" _WS* (expression _statement_separation)+ expression? ")"
