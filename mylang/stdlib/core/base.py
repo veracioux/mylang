@@ -299,17 +299,3 @@ class Args(Dict):
     def is_mixed_positional_keyed(self) -> bool:
         """Check if the Args contains both positional and keyed arguments."""
         return not self.is_positional_only() and not self.is_keyed_only()
-
-
-class Ref(Object):
-    def __init__(self, key: Object):
-        from ._context import current_context
-
-        self.obj = current_context.get()[key]
-
-    @classmethod
-    def of(cls, obj: Object):
-        """Create a reference to an object."""
-        instance = super().__new__(cls)
-        instance.obj = obj
-        return instance

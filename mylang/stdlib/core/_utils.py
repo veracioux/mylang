@@ -78,10 +78,6 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
         from .complex import String
         from .base import Object
 
-        # __init__ method, if defined, is used only to advertise the signature
-        if '__init__' in vars(cls):
-            del cls.__init__
-
         # Register the class as a function
         all_functions_defined_as_classes.add(cls)
 
@@ -101,11 +97,11 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun'
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
                 from .func import call
-                from .base import Ref
+                from . import ref
                 if currently_called_func.get() is __new__:
                     with set_contextvar(currently_called_func, cls._m_classcall_):
                         return cls._m_classcall_(*args, **kwargs)
-                return call(Ref.of(cls), *args, **kwargs)
+                return call(ref.of(cls), *args, **kwargs)
             cls.__new__ = __new__
 
         # TODO: initialize parameters and body

@@ -1,7 +1,8 @@
 from types import MethodType
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, final
 
-from .base import Args, Array, Dict, Object, Ref
+from . import Object
+from .base import Args, Array, Dict, Object
 from ._utils import (
     expose,
     function_defined_as_class,
@@ -47,7 +48,7 @@ class fun(Object, Generic[TypeReturn]):
             assert False, "Function requires at least two positional arguments - name and body"
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
-        return call(Ref.of(self), *args, **kwargs)
+        return call(ref.of(self), *args, **kwargs)
 
     def _m_call_(self, args: Args, /) -> TypeReturn:
         # TODO: check args against parameters
@@ -90,8 +91,8 @@ class call(Object):
         func_key, rest = args[0], args[1:]
         with nested_context(args._m_dict_) as new_context:
             obj_to_call: Object
-            if isinstance(ref := func_key, Ref):
-                obj_to_call = ref.obj
+            if isinstance(_ref := func_key, ref):
+                obj_to_call = _ref.obj
             else:
                 obj_to_call = new_context[func_key]
 
@@ -113,7 +114,7 @@ class get(Object):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
-        if isinstance(args[0], Ref):
+        if isinstance(args[0], ref):
             return args[0].obj
         context = current_context.get()
         return context[args[0]]
@@ -258,3 +259,40 @@ class ExecutionBlock(StatementList):
     def execute(self) -> Object:
         with nested_context({}):
             return super().execute()
+
+
+@expose
+@function_defined_as_class
+@final
+class ref(Object):
+    def __init__(self, key: Object):
+        from ._context import current_context
+
+        # TODO: For some reason `ref 1` doesn't throw, even though I didn't
+        # explicitly assign set 1=...
+
+        self.obj = current_context.get()[key]
+
+    @classmethod
+    def of(cls, obj: Object, /):
+        """Create a reference to an object."""
+        instance = super().__new__(cls)
+        instance.obj = obj
+        return instance
+
+    def _m_classcall_(cls, args: Args, /):
+        self = super().__new__(ref)
+        key = args[0]
+        self.__init__(key)
+        return self
+
+    def __str__(self):
+        return str(self.obj)
+
+    def __repr__(self):
+        return repr(self.obj)
+
+    def _m_repr_(self):
+        return self.obj._m_repr_()
+
+    # TODO: Implement more

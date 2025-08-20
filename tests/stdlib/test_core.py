@@ -3,7 +3,8 @@ from mylang.stdlib.core._utils import (
     python_obj_to_mylang,
     currently_called_func,
 )
-from mylang.stdlib.core.base import Args, Array, Object, Ref
+from mylang.stdlib.core.base import Args, Array, Object
+from mylang.stdlib.core import ref
 from mylang.stdlib.core.complex import String
 from mylang.stdlib.core.func import StatementList, call, fun, return_, set, get
 from mylang.stdlib.core.primitive import Int, undefined
@@ -165,7 +166,7 @@ class Test_call:
 
     def test_call_ref_of_func(self):
         result = call(
-            Ref.of(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
+            ref.of(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
         )
         self.assert_result_correct(result)
 
@@ -177,17 +178,17 @@ class Test_call:
 
     def test_call_ref_of_call(self):
         result = call(
-            Ref.of(call),
-            Args(Ref.of(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
+            ref.of(call),
+            Args(ref.of(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
         )
         self.assert_result_correct(result)
 
     def test_call_ref_of_call_ref_of_call(self):
         result = call(
             Args(
-                Ref.of(call),
-                Ref.of(call),
-                Ref.of(self.func),
+                ref.of(call),
+                ref.of(call),
+                ref.of(self.func),
                 "arg0",
                 "arg1",
                 kwarg1="KWARG1",
@@ -210,7 +211,7 @@ class Test_get:
 
     def test_get_ref(self):
         obj = Object()
-        result = get(Ref.of(obj))
+        result = get(ref.of(obj))
         assert result is obj
 
     def test_get_non_existing_key(self):
@@ -232,3 +233,6 @@ class Test_set_get:
         key = get("key")
         result = get(key)
         assert result == String("value")
+
+
+# TODO: Test function `ref`

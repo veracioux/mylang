@@ -11,8 +11,8 @@ from .primitive import (
     null,
 )
 from .complex import String, Path
-from .base import Object, Args, Dict, Array, Ref
-from .func import fun, call, set, get, return_, use
+from .base import Object, Args, Dict, Array
+from .func import fun, call, set, get, return_, use, ref
 
 from ._context import Context, current_context
 
@@ -33,11 +33,12 @@ __all__ = (
     "Args",
     "Dict",
     "Array",
-    "Ref",
+    "ref",
     "fun",
     "call",
     "set",
     "get",
     "return_",
     "use",
+    "ref",
 )
