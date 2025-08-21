@@ -1,19 +1,20 @@
-from types import MethodType
+import contextlib
 from typing import TYPE_CHECKING, Generic, TypeVar, final
 
-from . import Object
-from .base import Args, Array, Dict, Object
+from ._context import current_context, nested_context, parent_context
 from ._utils import (
+    currently_called_func,
     expose,
     function_defined_as_class,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
-    currently_called_func,
     set_contextvar,
+    FunctionAsClass,
 )
-from ._context import current_context, nested_context, parent_context
+from .base import Args, Array, Dict, Object
+from .primitive import Bool
 
-__all__ = ("fun", "call", "get", "set", "return_")
+__all__ = ("fun", "call", "get", "set")
 
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ TypeReturn = TypeVar("TypeReturn", bound=Object)
 
 @expose
 @function_defined_as_class
-class fun(Object, Generic[TypeReturn]):
+class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     def __init__(self, name: Object, /, *args, **kwargs):
         self.name: Object
         self.parameters: Dict
@@ -32,6 +33,7 @@ class fun(Object, Generic[TypeReturn]):
         super().__init__(name, *args, **kwargs)
 
     def _m_classcall_(cls, args: "Args", /):
+        # TODO: Args must have unique names
         func = super().__new__(cls)
         last_positional_index = args.get_last_positional_index()
         if last_positional_index is not None and last_positional_index >= 1:
@@ -45,43 +47,40 @@ class fun(Object, Generic[TypeReturn]):
             current_context.get().parent[func.name] = func
             return func
         else:
-            assert False, "Function requires at least two positional arguments - name and body"
+            assert False, (
+                "Function requires at least two positional arguments - name and body"
+            )
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
         return call(ref.of(self), *args, **kwargs)
 
-    def _m_call_(self, args: Args, /) -> TypeReturn:
-        # TODO: check args against parameters
-        context = current_context.get()
-        for i, posarg in enumerate(self.parameters[:]):
-            context[posarg] = args[i]
-        # Populate function parameters in the current context
-        for key, default_value in self.parameters.keyed_dict():
-            context[key] = args.keyed_dict().get(key, default_value)
-
+    def _m_call_(self, _: Args, /) -> TypeReturn:
         return self.body.execute()
+
+    def __repr__(self):
+        pass
 
 
 @expose
 @function_defined_as_class(monkeypatch_methods=False)
-class call(Object):
+class call(Object, FunctionAsClass):
     def __new__(cls, func_key, *args, **kwargs):
         if isinstance(func_key, Args):
             if len(args) > 0 or len(kwargs) > 0:
                 raise ValueError(
                     "If the first argument is of type Args, no other arguments are allowed."
                 )
-            return cls._m_classcall_(None, func_key)
+            return cls._m_classcall_(cls, func_key)
         elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
             if len(args) > 1:
                 raise ValueError(
                     "If an argument of type Args is used, it must be the only argument."
                 )
-            return cls._m_classcall_(None, [func_key] + mylang_args)
+            return cls._m_classcall_(cls, [func_key] + mylang_args)
         else:
             return cls._m_classcall_(
-                None,
-                Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs))
+                cls,
+                Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs)),
             )
 
     def __init__(self, func_key, *args, **kwargs):
@@ -89,28 +88,60 @@ class call(Object):
 
     def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
-        with nested_context(args._m_dict_) as new_context:
-            obj_to_call: Object
-            if isinstance(_ref := func_key, ref):
-                obj_to_call = _ref.obj
-            else:
-                obj_to_call = new_context[func_key]
+        this_context = current_context.get()
 
-            if isinstance(obj_to_call, type):
-                # Function defined as class
-                python_callable = obj_to_call._m_classcall_
-            else:
-                # Regular MyLang callable
-                python_callable = obj_to_call._m_call_.__func__
+        obj_to_call: Object
+        if isinstance(_ref := func_key, ref):
+            obj_to_call = _ref.obj
+        else:
+            obj_to_call = this_context[func_key]
 
-            with set_contextvar(currently_called_func, python_callable):
-                fun_args = Args.from_dict(dict(enumerate(rest)) | args.keyed_dict())
+        if isinstance(obj_to_call, type):
+            # Function defined as class
+            python_callable = obj_to_call._m_classcall_
+        else:
+            # Regular MyLang callable
+            python_callable = obj_to_call._m_call_.__func__
+
+        with set_contextvar(currently_called_func, python_callable):
+            with (
+                nested_context(
+                    cls._create_context_dict_with_args_for_callable(
+                        obj_to_call,
+                        Args(*rest),
+                    )
+                )
+                if not isinstance(obj_to_call, type) or obj_to_call._m_should_create_nested_context_()
+                else contextlib.nullcontext()
+            ):
+                fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
                 return python_callable(obj_to_call, fun_args)
+
+    @classmethod
+    def _create_context_dict_with_args_for_callable(
+        cls,
+        callable: Object,
+        args: Args,
+    ):
+        """Create a local context dictionary for `callable` that maps the arguments `args` to the callable's parameters."""
+        # TODO: If it is a function implemented in Python, it won't need the bindings to be available in the context,
+        #       as it will be able to access the `args` object directly
+        context_dict = {}
+
+        if hasattr(callable, 'parameters'):
+            for i, posarg in enumerate(callable.parameters[:]):
+                context_dict[posarg] = args[i]
+            keyed_parameters = callable.parameters.keyed_dict()
+            keyed_args = args.keyed_dict()
+            for key, default_value in keyed_parameters.items():
+                context_dict[key] = keyed_args.get(key, default_value)
+
+        return context_dict
 
 
 @expose
 @function_defined_as_class
-class get(Object):
+class get(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
@@ -122,9 +153,10 @@ class get(Object):
 
 @expose
 @function_defined_as_class
-class set(Object):
+class set(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         from .primitive import undefined
+
         context = current_context.get()
         for key, value in args._m_dict_.items():
             context.parent[key] = value
@@ -133,22 +165,9 @@ class set(Object):
 
 @expose
 @function_defined_as_class
-class return_(Object):
-    _m_name_ = "return"
-
-    def _m_classcall_(cls, args: Args, /):
-        # TODO: Make sure return skips execution of remaining statements
-        if len(args) != 1:
-            raise ValueError("return requires exactly one argument")
-        context = current_context.get().parent
-        context.return_value = args[0]
-        return context.get_return_value()
-
-
-@expose
-@function_defined_as_class
-class use(Object):
+class use(Object, FunctionAsClass):
     """Use code from another file."""
+
     __cache: dict[str, Object] = {}
 
     def __init__(self, source: str, /, *, use_cache=True):
@@ -166,9 +185,10 @@ class use(Object):
             raise TypeError("use requires a String as the first argument")
 
         use_cache = True
-        if 'use_cache' in args:
-            use_cache = args['use_cache']
+        if "use_cache" in args:
+            use_cache = args["use_cache"]
             from .primitive import Bool
+
             if not isinstance(use_cache, Bool):
                 raise TypeError("use_cache must be a Bool")
 
@@ -183,7 +203,7 @@ class use(Object):
 
         # TODO: Use a lookup strategy
         # TODO: Support Path in addition to String
-        from ...parser import parser, STATEMENT_LIST
+        from ...parser import STATEMENT_LIST, parser
         from ...transformer import Transformer
 
         # TODO: File extension
@@ -210,7 +230,9 @@ class use(Object):
         return exported_value
 
     @classmethod
-    def _set_alias_binding_in_caller_context(cls, name: 'String', exported_value: Object):
+    def _set_alias_binding_in_caller_context(
+        cls, name: "String", exported_value: Object
+    ):
         """Set the alias binding in the caller's context."""
         # Set the alias binding in the caller's context
         with parent_context():
@@ -220,7 +242,8 @@ class use(Object):
 
 class StatementList(Array):
     def execute(self) -> Object:
-        from . import Object, Args, set, call
+        from . import Args, Object, call, set
+
         for i_statement, statement in enumerate(self):
             result: Object
             # Make sure an expression is converted to Args. If already Args, it
@@ -237,9 +260,7 @@ class StatementList(Array):
                     key = key.execute()
 
                 args[key] = (
-                    value.execute()
-                    if isinstance(value, ExecutionBlock)
-                    else value
+                    value.execute() if isinstance(value, ExecutionBlock) else value
                 )
 
             if args.is_keyed_only():
@@ -247,11 +268,16 @@ class StatementList(Array):
             else:
                 result = call(args)
 
+            if current_context.get().return_value is not None:
+                # If a return value was set, we stop executing further statements
+                return current_context.get().return_value
+
             if i_statement == len(self) - 1:
                 return result
 
     def _m_repr_(self):
         from .complex import String
+
         return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
 
 
@@ -264,11 +290,11 @@ class ExecutionBlock(StatementList):
 @expose
 @function_defined_as_class
 @final
-class ref(Object):
+class ref(Object, FunctionAsClass):
     def __init__(self, key: Object):
         from ._context import current_context
 
-        # TODO: For some reason `ref 1` doesn't throw, even though I didn't
+        # FIXME: For some reason `ref 1` doesn't throw, even though I didn't
         # explicitly assign set 1=...
 
         self.obj = current_context.get()[key]
@@ -296,3 +322,24 @@ class ref(Object):
         return self.obj._m_repr_()
 
     # TODO: Implement more
+
+
+@expose
+@function_defined_as_class
+@final
+class op(Object, FunctionAsClass):
+    """Invoke an operation by given operator in Polish notation."""
+
+    # TODO: Make the operation functions first class citizens
+    operators = {
+        "==": python_obj_to_mylang(lambda a, b: Bool(a == b)),
+        "-": python_obj_to_mylang(lambda a, b: a - b),
+        "*": python_obj_to_mylang(lambda a, b: a * b),
+    }
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def _m_classcall_(cls, args: Args, /):
+        # TODO: Validate args
+        return op.operators[str(args[0])](*args[1:])

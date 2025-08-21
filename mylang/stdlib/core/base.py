@@ -30,12 +30,24 @@ class Object:
     def _m_init_(self, args: "Args", /):
         assert isinstance(args, Args)
 
+    def _m_call_(self, args: "Args", /):
+        """Called when the instance is called by the `call` function.
+        The `call` function takes care of setting up the local context before it makes this call.
+        Parameters
+            args : `Args`
+                The arguments this function was called with. The implementation of `_m_call_` may use these
+                arguments directly, or it can obtain them from the local context, where those arguments are mapped
+                to local keys based on the args and the callable (self)'s parameter signature.
+        """
+        # TODO: Indicate that this function does not exist unless explicitly implemented by subclasses
+        raise NotImplementedError
+
     def _m_setattr_(self, key: "Object", value: "Object", /):
         assert False
 
     def __repr__(self):
         parameters = inspect.signature(self.__init__).parameters
-        if all(
+        if any(
             x.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
             for x in parameters.values()
         ):
@@ -125,7 +137,7 @@ class Dict(Object):
 
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
-        self._m_dict_: dict[Object, Object] = args._m_dict_
+        self._m_dict_: dict[Object, Object] = args._m_dict_.copy()
 
     def _m_repr_(self):
         from .complex import String
@@ -190,10 +202,7 @@ class Dict(Object):
         return self._m_dict_.__getitem__(python_obj_to_mylang(key))
 
     def __repr__(self):
-        get_from_dict_repr = (
-            lambda: f"{self.__class__.__name__}.from_dict({mylang_obj_to_python(self._m_dict_)!r})"
-        )
-        return get_from_dict_repr()
+        return f"{self.__class__.__name__}.from_dict({mylang_obj_to_python(self._m_dict_)!r})"
 
     def __eq__(self, value: object, /) -> bool:
         return isinstance(value, self.__class__) and self._m_dict_ == value._m_dict_
@@ -207,12 +216,6 @@ class Args(Dict):
     Right now it does nothing extra by itself, but various contexts treat it
     differently than :class:`Dict`.
     """
-
-    def __new__(cls, *args: Any, **kwargs: Any):
-        # Make Args(args) where isinstance(args, Args) return args
-        if len(kwargs) == 0 and len(args) == 1 and isinstance(args[0], Args):
-            return args[0]
-        return super().__new__(cls)
 
     def get_last_positional_index(self):
         from .primitive import Int
@@ -299,3 +302,7 @@ class Args(Dict):
     def is_mixed_positional_keyed(self) -> bool:
         """Check if the Args contains both positional and keyed arguments."""
         return not self.is_positional_only() and not self.is_keyed_only()
+
+    @classmethod
+    def from_positional_keyed(cls, positional: Iterable, keyed: dict[Any, Any], /) -> "Args":
+        return Args.from_dict(dict(enumerate(positional)) | keyed)

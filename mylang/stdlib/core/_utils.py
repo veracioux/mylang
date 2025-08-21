@@ -1,9 +1,9 @@
+import abc
 from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
-from types import FunctionType, MethodType, MethodWrapperType
+from types import FunctionType
 from typing import TYPE_CHECKING, Any, TypeVar
-from weakref import WeakKeyDictionary, WeakSet
 
 
 if TYPE_CHECKING:
@@ -32,6 +32,8 @@ def python_obj_to_mylang(obj):
     elif obj is None:
         from .primitive import undefined
         return undefined
+    elif isinstance(obj, FunctionType):
+        return _python_func_to_mylang(obj)
     elif obj in all_functions_defined_as_classes:
         return obj
     else:
@@ -73,10 +75,25 @@ TypeFunc = TypeVar('TypeFunc', bound=FunctionType)
 all_functions_defined_as_classes: set[type] = set()
 
 
+class FunctionAsClass(abc.ABC):
+    @classmethod
+    def _m_should_create_nested_context_(cls) -> bool:
+        """Whether `call` should create a nested local context for this function.
+        Most functions should return True, while special control flow functions like if, return, etc should return False.
+        """
+        return True
+
+    @abc.abstractmethod
+    def _m_classcall_(cls, args: 'Args', /):
+        ...
+
+
 def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> 'fun':
     def decorator(cls):
+        assert isinstance(cls, type) and issubclass(cls,
+                                                    FunctionAsClass), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
+
         from .complex import String
-        from .base import Object
 
         # Register the class as a function
         all_functions_defined_as_classes.add(cls)
@@ -158,3 +175,18 @@ def only_callable_by_call_decorator(func):
         assert currently_called_func.get() is wrapper, f"MyLang-exposed callable can only be called from `call`"
         return func(*args, **kwargs)
     return wrapper
+
+
+def _python_func_to_mylang(func: FunctionType) -> 'Object':
+    """Convert a Python function to a MyLang function."""
+    from .base import Object, Args
+    from .func import FunctionAsClass
+    @function_defined_as_class
+    class __func(Object, FunctionAsClass):
+        def _m_classcall_(self, args: 'Args', /):
+            """Call the function with the given arguments."""
+            return func(*args[:], **args.keyed_dict())
+
+    __func.__name__ = func.__name__
+
+    return __func

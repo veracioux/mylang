@@ -42,7 +42,19 @@ class Scalar(Primitive, Generic[TypeValue]):
 
 
 class Number(Scalar[TypeValue], Generic[TypeValue]):
-    pass
+    def __sub__(self, other: 'Number'):
+        return self.__class__(self.value - other.value)
+
+    def __add__(self, other: 'Number'):
+        return self.__class__(self.value + other.value)
+
+    def __mul__(self, other: 'Number'):
+        return self.__class__(self.value * other.value)
+
+    def __truediv__(self, other: 'Number'):
+        if other.value == 0:
+            raise ZeroDivisionError("division by zero")
+        return self.__class__(self.value / other.value)
 
 
 class Int(Number[int]):

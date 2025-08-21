@@ -1,12 +1,12 @@
 from mylang.stdlib.core._utils import (
     function_defined_as_class,
-    python_obj_to_mylang,
     currently_called_func,
+    FunctionAsClass,
 )
 from mylang.stdlib.core.base import Args, Array, Object
-from mylang.stdlib.core import ref
+from mylang.stdlib.core import ref, return_
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import StatementList, call, fun, return_, set, get
+from mylang.stdlib.core.func import StatementList, call, fun, set, get
 from mylang.stdlib.core.primitive import Int, undefined
 from mylang.stdlib.core._context import Context, current_context
 import pytest
@@ -89,11 +89,11 @@ class TestArray:
 
 class Test_fun:
     def test_construct(self):
-        f = fun(Args("test", "x", StatementList(Args("call", "something")), a="A", b="B"))
-        assert f.name == String("test")
-        assert f.parameters == Args.from_dict(
-            {0: "x", "a": "A", "b": "B"}
+        f = fun(
+            Args("test", "x", StatementList(Args("call", "something")), a="A", b="B")
         )
+        assert f.name == String("test")
+        assert f.parameters == Args.from_dict({0: "x", "a": "A", "b": "B"})
         assert f.body == StatementList(Args("call", "something"))
         assert current_context.get()["test"] is f
 
@@ -136,9 +136,11 @@ class Test_set:
 
 class Test_call:
     @function_defined_as_class
-    class func(Object):
+    class func(Object, FunctionAsClass):
         def _m_classcall_(self, args: Args, /):
-            return Array.from_list(["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]])
+            return Array.from_list(
+                ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]
+            )
 
     def assert_result_correct(self, result):
         assert isinstance(result, Array)
@@ -196,6 +198,64 @@ class Test_call:
             )
         )
         self.assert_result_correct(result)
+
+    def test_create_context_dict_positional_args(self):
+        # Create a dummy callable with parameters
+        dummy_func = fun("dummy", "x", "y", StatementList())
+
+        # Call the method
+        context_dict = call._create_context_dict_with_args_for_callable(
+            dummy_func, Args("X", "Y"),
+        )
+
+        # Check that positional arguments are mapped correctly
+        assert context_dict == {String("x"): String("X"), String("y"): String("Y")}
+
+    def test_create_context_dict_keyword_args(self):
+        # Create a dummy callable with parameters
+        dummy_func = fun("dummy", StatementList(), first="default_1st", second="default_2nd")
+
+        # Call the method with keyword arguments
+        context_dict = call._create_context_dict_with_args_for_callable(
+            dummy_func, Args(first="foo")
+        )
+
+        # Check that keyword arguments are mapped correctly
+        assert context_dict == {
+            String("first"): String("foo"),
+            String("second"): String("default_2nd")
+        }
+
+    def test_create_context_dict_mixed_args(self):
+        # Create a dummy callable with parameters
+        dummy_func = fun("dummy", "x", "y", StatementList(), third="default_3rd", fourth="default_4th")
+
+        # Call the method with mixed arguments
+        context_dict = call._create_context_dict_with_args_for_callable(
+            dummy_func, Args("X", "Y", fourth="foo")
+        )
+
+        # Check that mixed arguments are mapped correctly
+        assert context_dict == {
+            String("x"): String("X"),
+            String("y"): String("Y"),
+            String("third"): String("default_3rd"),
+            String("fourth"): String("foo")
+        }
+
+    def test_create_context_dict_no_parameters(self):
+        # Create a dummy callable without parameters
+        dummy_func = fun("dummy", StatementList())
+
+        # Call the method without parameters
+        context_dict = call._create_context_dict_with_args_for_callable(
+            dummy_func, Args()
+        )
+
+        # Check that an empty context dict is returned
+        assert context_dict == {}
+
+    # TODO: Test invalid calls, e.g. too many positional arguments, etc.
 
 
 class Test_get:

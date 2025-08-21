@@ -1,8 +1,6 @@
 
-from mylang.stdlib.core._utils import expose, function_defined_as_class
 from ..core.base import Args, Object
-from ..core._utils import expose, function_defined_as_class
-
+from ..core._utils import expose, function_defined_as_class, FunctionAsClass
 
 __all__ = ("echo",)
 
@@ -10,7 +8,7 @@ __all__ = ("echo",)
 # TODO: This is just a crude prototype
 @expose
 @function_defined_as_class
-class echo(Object):
+class echo(Object, FunctionAsClass):
     """Echoes the input value to stdout."""
 
     def _m_classcall_(self, args: Args, /):

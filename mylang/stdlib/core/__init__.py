@@ -12,9 +12,8 @@ from .primitive import (
 )
 from .complex import String, Path
 from .base import Object, Args, Dict, Array
-from .func import fun, call, set, get, return_, use, ref
-
-from ._context import Context, current_context
+from .func import fun, call, set, get, use, ref, op
+from .flow import if_, return_
 
 __all__ = (
     "Primitive",
@@ -41,4 +40,6 @@ __all__ = (
     "return_",
     "use",
     "ref",
+    "if_",
+    "op",
 )
