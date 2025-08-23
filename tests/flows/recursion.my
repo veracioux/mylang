@@ -1,0 +1,9 @@
+fun factorial n (
+    if {"==" {get n} 1} (
+        return 1
+    )
+
+    return {"*" {get n} {factorial {"-" {get n} 1}}}
+)
+
+echo "Factorial of 5 is:" {factorial 5}

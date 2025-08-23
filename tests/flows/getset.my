@@ -1,0 +1,5 @@
+a = 1
+
+b = {get a}
+
+echo {get b}

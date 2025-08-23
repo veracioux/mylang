@@ -1,23 +1,24 @@
+import pytest
+
+from mylang.stdlib.core import ref, return_
+from mylang.stdlib.core._context import StackFrame, current_stack_frame
 from mylang.stdlib.core._utils import (
     function_defined_as_class,
     currently_called_func,
     FunctionAsClass,
 )
 from mylang.stdlib.core.base import Args, Array, Object
-from mylang.stdlib.core import ref, return_
 from mylang.stdlib.core.complex import String
 from mylang.stdlib.core.func import StatementList, call, fun, set, get
 from mylang.stdlib.core.primitive import Int, undefined
-from mylang.stdlib.core._context import Context, current_context
-import pytest
 
 
 @pytest.fixture(autouse=True)
-def isolate_context():
-    reset_token_1 = current_context.set(Context())
+def isolate_stack_frame():
+    reset_token_1 = current_stack_frame.set(StackFrame())
     reset_token_2 = currently_called_func.set(None)
     yield
-    current_context.reset(reset_token_1)
+    current_stack_frame.reset(reset_token_1)
     currently_called_func.reset(reset_token_2)
 
 
@@ -95,7 +96,7 @@ class Test_fun:
         assert f.name == String("test")
         assert f.parameters == Args.from_dict({0: "x", "a": "A", "b": "B"})
         assert f.body == StatementList(Args("call", "something"))
-        assert current_context.get()["test"] is f
+        assert current_stack_frame.get()["test"] is f
 
     def test_call(self):
         """
@@ -105,7 +106,7 @@ class Test_fun:
         }
         ```
         """
-        current_context.get()["return"] = return_
+        current_stack_frame.get().locals["return"] = return_
         f = fun(Args("return_constant", StatementList.from_list([Args("return", 42)])))
         result = f()
         assert result == Int(42)
@@ -116,28 +117,29 @@ class Test_fun:
 class Test_set:
     def test_call(self):
         result = set(Args(a=1, b=2))
-        context = current_context.get()
-        assert context[String("a")] == Int(1)
-        assert context[String("b")] == Int(2)
+        stack_frame = current_stack_frame.get()
+        assert stack_frame[String("a")] == Int(1)
+        assert stack_frame[String("b")] == Int(2)
         assert result is undefined
 
     def test_call_python_args_kwargs(self):
         result = set(a=1)
-        context = current_context.get()
-        assert context[String("a")] == Int(1)
+        stack_frame = current_stack_frame.get()
+        assert stack_frame[String("a")] == Int(1)
         assert result is undefined
 
     def test_empty_call(self):
         result = set()
-        context = current_context.get()
-        assert context.dict_ == {}
+        stack_frame = current_stack_frame.get()
+        assert stack_frame.locals == {}
         assert result is undefined
 
 
 class Test_call:
     @function_defined_as_class
     class func(Object, FunctionAsClass):
-        def _m_classcall_(self, args: Args, /):
+        @classmethod
+        def _m_classcall_(cls, args: Args, /):
             return Array.from_list(
                 ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]
             )
@@ -155,14 +157,14 @@ class Test_call:
         )
 
     def test_call_args_kwargs(self):
-        context = current_context.get()
-        context["func"] = self.func
+        stack_frame = current_stack_frame.get()
+        stack_frame.locals["func"] = self.func
         result = call("func", Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
         self.assert_result_correct(result)
 
     def test_call_mylang_args(self):
-        context = current_context.get()
-        context["func"] = self.func
+        stack_frame = current_stack_frame.get()
+        stack_frame.locals["func"] = self.func
         result = call(Args("func", "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
         self.assert_result_correct(result)
 
@@ -173,8 +175,9 @@ class Test_call:
         self.assert_result_correct(result)
 
     def test_call_call(self):
-        current_context.get()["call"] = call
-        current_context.get()["func"] = self.func
+        stack_frame = current_stack_frame.get()
+        stack_frame.locals["call"] = call
+        stack_frame.locals["func"] = self.func
         result = call("call", "func", "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
         self.assert_result_correct(result)
 
@@ -199,73 +202,73 @@ class Test_call:
         )
         self.assert_result_correct(result)
 
-    def test_create_context_dict_positional_args(self):
+    def test_create_locals_for_callable_positional_args(self):
         # Create a dummy callable with parameters
         dummy_func = fun("dummy", "x", "y", StatementList())
 
         # Call the method
-        context_dict = call._create_context_dict_with_args_for_callable(
+        locals_ = call._create_locals_for_callable(
             dummy_func, Args("X", "Y"),
         )
 
         # Check that positional arguments are mapped correctly
-        assert context_dict == {String("x"): String("X"), String("y"): String("Y")}
+        assert locals_ == {String("x"): String("X"), String("y"): String("Y")}
 
-    def test_create_context_dict_keyword_args(self):
+    def test_create_locals_for_callable_keyword_args(self):
         # Create a dummy callable with parameters
         dummy_func = fun("dummy", StatementList(), first="default_1st", second="default_2nd")
 
         # Call the method with keyword arguments
-        context_dict = call._create_context_dict_with_args_for_callable(
+        locals_ = call._create_locals_for_callable(
             dummy_func, Args(first="foo")
         )
 
         # Check that keyword arguments are mapped correctly
-        assert context_dict == {
+        assert locals_ == {
             String("first"): String("foo"),
             String("second"): String("default_2nd")
         }
 
-    def test_create_context_dict_mixed_args(self):
+    def test_create_locals_for_callable_mixed_args(self):
         # Create a dummy callable with parameters
         dummy_func = fun("dummy", "x", "y", StatementList(), third="default_3rd", fourth="default_4th")
 
         # Call the method with mixed arguments
-        context_dict = call._create_context_dict_with_args_for_callable(
+        locals_ = call._create_locals_for_callable(
             dummy_func, Args("X", "Y", fourth="foo")
         )
 
         # Check that mixed arguments are mapped correctly
-        assert context_dict == {
+        assert locals_ == {
             String("x"): String("X"),
             String("y"): String("Y"),
             String("third"): String("default_3rd"),
             String("fourth"): String("foo")
         }
 
-    def test_create_context_dict_no_parameters(self):
+    def test_create_locals_for_callable_no_parameters(self):
         # Create a dummy callable without parameters
         dummy_func = fun("dummy", StatementList())
 
         # Call the method without parameters
-        context_dict = call._create_context_dict_with_args_for_callable(
+        locals_ = call._create_locals_for_callable(
             dummy_func, Args()
         )
 
         # Check that an empty context dict is returned
-        assert context_dict == {}
+        assert locals_ == {}
 
     # TODO: Test invalid calls, e.g. too many positional arguments, etc.
 
 
 class Test_get:
     def test_get_with_mylang_args(self):
-        current_context.get()["key"] = Int(42)
+        current_stack_frame.get().locals["key"] = Int(42)
         result = get(Args("key"))
         assert result == Int(42)
 
     def test_get_with_args_kwargs(self):
-        current_context.get()["key"] = Int(42)
+        current_stack_frame.get().locals["key"] = Int(42)
         result = get("key")
         assert result == Int(42)
 
@@ -293,6 +296,5 @@ class Test_set_get:
         key = get("key")
         result = get(key)
         assert result == String("value")
-
 
 # TODO: Test function `ref`

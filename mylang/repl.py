@@ -5,15 +5,11 @@ import traceback
 from lark import ParseError, Tree, UnexpectedCharacters
 
 from mylang.parser import STATEMENT_LIST, parser
-from mylang.stdlib.core import Args, undefined
-from mylang.stdlib.core.base import Object
+from mylang.stdlib.core import Args, undefined, Object
 from mylang.transformer import Transformer
 from mylang.stdlib.core.func import StatementList, ExecutionBlock
-
-import mylang.stdlib.builtins
-
-# Imported for side effects
-_ = mylang.stdlib.builtins
+from mylang.stdlib import builtins as builtins_
+from mylang.stdlib.core._context import StackFrame, current_stack_frame
 
 
 # This is for debugging purposes, mostly so I can feed it to an LLM
@@ -33,6 +29,11 @@ def repl():
     print()
 
     buf = ""
+
+    # TODO: Use with to clean up stack frame
+    current_stack_frame.set(
+        StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get())
+    )
 
     # TODO: Handle Alt+Enter to insert a newline without evaluating
 

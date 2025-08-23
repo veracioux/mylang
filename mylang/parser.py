@@ -8,7 +8,7 @@ from lark import Lark
 from pathlib import Path
 
 from .stdlib.core import String, Object, Args, call, set, Primitive, Number, Bool, undefined, null, Float, Int
-from .stdlib.core._context import nested_context
+from .stdlib.core._context import nested_stack_frame
 
 
 __all__ = ("parser", "EXPRESSION", "STATEMENT_LIST")

@@ -1,4 +1,4 @@
-from ._context import current_context
+from ._context import current_stack_frame, parent_stack_frame
 from .func import StatementList
 from ._utils import expose, function_defined_as_class, FunctionAsClass
 from .base import class_, Object, Args
@@ -8,9 +8,12 @@ from .primitive import undefined
 @function_defined_as_class
 class if_(Object, FunctionAsClass):
     _m_name_ = "if"
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
-    def _m_classcall_(self, args, /):
+    @classmethod
+    def _m_classcall_(cls, args, /):
         # TODO: Validate args
+        # TODO: Add else, else if
         condition = args[0]
         statement_list = args[1]
         assert isinstance(statement_list, StatementList), "The second argument must be a StatementList"
@@ -19,28 +22,20 @@ class if_(Object, FunctionAsClass):
         else:
             return undefined
 
-    @classmethod
-    def _m_should_create_nested_context_(cls):
-        return False
-
-
 @expose
 @function_defined_as_class
 class return_(Object, FunctionAsClass):
     _m_name_ = "return"
-
-    def _m_classcall_(cls, args: Args, /):
-        # TODO: Make sure return skips execution of remaining statements
-        if len(args) != 1:
-            raise ValueError("return requires exactly one argument")
-        context = current_context.get()
-        context.return_value = args[0]
-        return context.get_return_value()
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    def _m_should_create_nested_context_(cls):
-        return False
-
+    def _m_classcall_(cls, args: Args, /):
+        # TODO: Make sure return skips execution of remaining statements
+        # TODO: Also check that args are positional
+        if len(args) > 1:
+            raise ValueError("return requires zero or one argument")
+        cls._caller_stack_frame().return_value = return_value = args[0] if len(args) == 1 else undefined
+        return return_value
 
 # TODO
 

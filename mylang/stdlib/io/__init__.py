@@ -1,4 +1,4 @@
-
+from ..core import undefined
 from ..core.base import Args, Object
 from ..core._utils import expose, function_defined_as_class, FunctionAsClass
 
@@ -11,6 +11,8 @@ __all__ = ("echo",)
 class echo(Object, FunctionAsClass):
     """Echoes the input value to stdout."""
 
-    def _m_classcall_(self, args: Args, /):
+    @classmethod
+    def _m_classcall_(cls, args: Args, /):
         """Prints the input value to stdout."""
         print(*(str(arg) for arg in args[:]))
+        return undefined

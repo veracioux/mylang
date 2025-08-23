@@ -1,7 +1,14 @@
 import contextlib
 from typing import TYPE_CHECKING, Generic, TypeVar, final
 
-from ._context import current_context, nested_context, parent_context
+from ._context import (
+    LocalsDict,
+    current_stack_frame,
+    nested_stack_frame,
+    parent_stack_frame,
+    LexicalScope,
+    StackFrame,
+)
 from ._utils import (
     currently_called_func,
     expose,
@@ -26,12 +33,17 @@ TypeReturn = TypeVar("TypeReturn", bound=Object)
 @expose
 @function_defined_as_class
 class fun(Object, FunctionAsClass, Generic[TypeReturn]):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
     def __init__(self, name: Object, /, *args, **kwargs):
         self.name: Object
         self.parameters: Dict
         self.body: StatementList
+        self._surrounding_lexical_scope: LexicalScope
+        """The lexical scope in which this function was defined."""
         super().__init__(name, *args, **kwargs)
 
+    @classmethod
     def _m_classcall_(cls, args: "Args", /):
         # TODO: Args must have unique names
         func = super().__new__(cls)
@@ -44,7 +56,9 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
             func.parameters = Args.from_dict(
                 dict(enumerate(args[1:-1])) | args.keyed_dict()
             )
-            current_context.get().parent[func.name] = func
+            caller_stack_frame = cls._caller_stack_frame()
+            caller_stack_frame.locals[func.name] = func
+            func._surrounding_lexical_scope = caller_stack_frame.lexical_scope
             return func
         else:
             assert False, (
@@ -57,109 +71,131 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     def _m_call_(self, _: Args, /) -> TypeReturn:
         return self.body.execute()
 
-    def __repr__(self):
-        pass
-
 
 @expose
 @function_defined_as_class(monkeypatch_methods=False)
 class call(Object, FunctionAsClass):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
     def __new__(cls, func_key, *args, **kwargs):
-        if isinstance(func_key, Args):
-            if len(args) > 0 or len(kwargs) > 0:
-                raise ValueError(
-                    "If the first argument is of type Args, no other arguments are allowed."
+        with (
+            set_contextvar(current_stack_frame, StackFrame())
+            if current_stack_frame.get() is None
+            else contextlib.nullcontext()
+        ):
+            if isinstance(func_key, Args):
+                if len(args) > 0 or len(kwargs) > 0:
+                    raise ValueError(
+                        "If the first argument is of type Args, no other arguments are allowed."
+                    )
+                return cls._m_classcall_(func_key)
+            elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
+                if len(args) > 1:
+                    raise ValueError(
+                        "If an argument of type Args is used, it must be the only argument."
+                    )
+                return cls._m_classcall_([func_key] + mylang_args)
+            else:
+                return cls._m_classcall_(
+                    Args.from_dict(
+                        python_dict_from_args_kwargs(func_key, *args, **kwargs)
+                    ),
                 )
-            return cls._m_classcall_(cls, func_key)
-        elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
-            if len(args) > 1:
-                raise ValueError(
-                    "If an argument of type Args is used, it must be the only argument."
-                )
-            return cls._m_classcall_(cls, [func_key] + mylang_args)
-        else:
-            return cls._m_classcall_(
-                cls,
-                Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs)),
-            )
 
     def __init__(self, func_key, *args, **kwargs):
         super().__init__(func_key, *args, **kwargs)
 
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
-        this_context = current_context.get()
+
+        # `call` is special, it operates in the caller's stack frame
+        caller_stack_frame = current_stack_frame.get()
 
         obj_to_call: Object
         if isinstance(_ref := func_key, ref):
             obj_to_call = _ref.obj
         else:
-            obj_to_call = this_context[func_key]
+            obj_to_call = caller_stack_frame[func_key]
 
-        if isinstance(obj_to_call, type):
+        needs_new_stack_frame = True
+
+        if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
             # Function defined as class
             python_callable = obj_to_call._m_classcall_
+            needs_new_stack_frame = obj_to_call._SHOULD_RECEIVE_NEW_STACK_FRAME
         else:
             # Regular MyLang callable
-            python_callable = obj_to_call._m_call_.__func__
+            python_callable = obj_to_call._m_call_
 
-        with set_contextvar(currently_called_func, python_callable):
-            with (
-                nested_context(
-                    cls._create_context_dict_with_args_for_callable(
-                        obj_to_call,
-                        Args(*rest),
-                    )
-                )
-                if not isinstance(obj_to_call, type) or obj_to_call._m_should_create_nested_context_()
+        # Locals of the called function
+        _locals = cls._create_locals_for_callable(
+            obj_to_call,
+            Args(*rest),
+        )
+
+        with (
+            set_contextvar(currently_called_func, python_callable),
+            (
+                nested_stack_frame(_locals)
+                if needs_new_stack_frame
                 else contextlib.nullcontext()
-            ):
-                fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
-                return python_callable(obj_to_call, fun_args)
+            ) as stack_frame,
+        ):
+            stack_frame = stack_frame or caller_stack_frame
+            if isinstance(func := obj_to_call, fun):  # TODO: Generalize
+                stack_frame.set_parent_lexical_scope(func._surrounding_lexical_scope)
+            fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
+            return python_callable(fun_args)
 
     @classmethod
-    def _create_context_dict_with_args_for_callable(
+    def _create_locals_for_callable(
         cls,
         callable: Object,
         args: Args,
     ):
-        """Create a local context dictionary for `callable` that maps the arguments `args` to the callable's parameters."""
+        """Create a locals dictionary for `callable` that maps the arguments `args` to the callable's parameters."""
         # TODO: If it is a function implemented in Python, it won't need the bindings to be available in the context,
         #       as it will be able to access the `args` object directly
-        context_dict = {}
+        locals_ = LocalsDict()
 
-        if hasattr(callable, 'parameters'):
+        if hasattr(callable, "parameters"):
             for i, posarg in enumerate(callable.parameters[:]):
-                context_dict[posarg] = args[i]
+                locals_[posarg] = args[i]
             keyed_parameters = callable.parameters.keyed_dict()
             keyed_args = args.keyed_dict()
             for key, default_value in keyed_parameters.items():
-                context_dict[key] = keyed_args.get(key, default_value)
+                locals_[key] = keyed_args.get(key, default_value)
 
-        return context_dict
+        return locals_
 
 
 @expose
 @function_defined_as_class
 class get(Object, FunctionAsClass):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
         if isinstance(args[0], ref):
             return args[0].obj
-        context = current_context.get()
-        return context[args[0]]
+        return cls._caller_stack_frame().lexical_scope[args[0]]
 
 
 @expose
 @function_defined_as_class
 class set(Object, FunctionAsClass):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         from .primitive import undefined
 
-        context = current_context.get()
+        lexical_scope_locals = cls._caller_stack_frame().lexical_scope.locals
         for key, value in args._m_dict_.items():
-            context.parent[key] = value
+            lexical_scope_locals[key] = value
         return undefined
 
 
@@ -167,12 +203,14 @@ class set(Object, FunctionAsClass):
 @function_defined_as_class
 class use(Object, FunctionAsClass):
     """Use code from another file."""
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     __cache: dict[str, Object] = {}
 
     def __init__(self, source: str, /, *, use_cache=True):
         super().__init__(source, use_cache=use_cache)
 
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         from .complex import String
 
@@ -198,7 +236,8 @@ class use(Object, FunctionAsClass):
         if use_cache and unique_id in use.__cache:
             # Return cached value if available
             exported_value = use.__cache[args[0].value]
-            use._set_alias_binding_in_caller_context(args[0], exported_value)
+
+            cls._caller_stack_frame().locals[args[0]] = exported_value
             return exported_value
 
         # TODO: Use a lookup strategy
@@ -215,16 +254,19 @@ class use(Object, FunctionAsClass):
         # value The exported value is either a dict of the module's locals or a
         # specific return value if return was called from within.
         exported_value: Object
-        with nested_context({}) as context:
+        with nested_stack_frame() as stack_frame:
             Transformer().transform(tree)
 
-            if context.return_value is not None:
-                exported_value = context.return_value
+            if stack_frame.return_value is not None:
+                exported_value = stack_frame.return_value
             else:
                 # TODO: Maybe wrap in a module type?
-                exported_value = Dict.from_dict(context.own_dict())
+                # TODO: Only export attributes called with export
+                # TODO: Use identity instead of hashing dict
+                exported_value = Dict.from_dict(stack_frame.locals.dict())
 
-        use._set_alias_binding_in_caller_context(args[0], exported_value)
+        cls._caller_stack_frame().locals[args[0]] = exported_value
+
         use.__cache[unique_id] = exported_value
 
         return exported_value
@@ -233,11 +275,9 @@ class use(Object, FunctionAsClass):
     def _set_alias_binding_in_caller_context(
         cls, name: "String", exported_value: Object
     ):
-        """Set the alias binding in the caller's context."""
-        # Set the alias binding in the caller's context
-        with parent_context():
-            # TODO: Handle multiple args potentially
-            set(Args.from_dict({name: exported_value}))
+        """Set the alias binding in the caller's lexical scope."""
+        # TODO: Handle multiple args potentially
+        set(Args.from_dict({name: exported_value}))
 
 
 class StatementList(Array):
@@ -250,27 +290,18 @@ class StatementList(Array):
             # won't be modified
             args = Args(statement)
 
-            # Iterate through all top-level items (positional args + keys + values)
-            # and make sure that if they are an ExecutionBlock, it gets executed.
-            for i_posarg, posarg in enumerate(args[:]):
-                if isinstance(posarg, ExecutionBlock):
-                    args[i_posarg] = posarg.execute()
-            for key, value in args.keyed_dict().items():
-                if isinstance(key, ExecutionBlock):
-                    key = key.execute()
-
-                args[key] = (
-                    value.execute() if isinstance(value, ExecutionBlock) else value
-                )
+            ExecutionBlock.execute_all_in_object(args)
 
             if args.is_keyed_only():
                 result = set(args)
             else:
                 result = call(args)
 
-            if current_context.get().return_value is not None:
+            stack_frame = current_stack_frame.get()
+
+            if stack_frame.return_value is not None:
                 # If a return value was set, we stop executing further statements
-                return current_context.get().return_value
+                return stack_frame.return_value
 
             if i_statement == len(self) - 1:
                 return result
@@ -283,21 +314,52 @@ class StatementList(Array):
 
 class ExecutionBlock(StatementList):
     def execute(self) -> Object:
-        with nested_context({}):
+        caller_stack_frame = current_stack_frame.get()
+        with nested_stack_frame() as stack_frame:
+            stack_frame.set_parent_lexical_scope(
+                caller_stack_frame.lexical_scope
+            )
             return super().execute()
+
+    @classmethod
+    def execute_all_in_object(cls, obj: Object):
+        """Execute all `ExecutionBlock`s recursively in the given object, and replace each with the value it returned.
+
+        The object and all its nested objects are modified in-place.
+
+        Returns:
+            obj The possibly modified object.
+        """
+        if isinstance(obj, cls):
+            return obj.execute()
+
+        if not hasattr(obj, "_m_dict_"):
+            return obj
+
+        # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
+        for key, value in tuple(obj._m_dict_.items()):
+            new_key = cls.execute_all_in_object(key)
+            if new_key is not key:
+                del obj._m_dict_[key]
+
+            obj._m_dict_[key] = cls.execute_all_in_object(value)
+
+        return obj
 
 
 @expose
 @function_defined_as_class
 @final
 class ref(Object, FunctionAsClass):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
     def __init__(self, key: Object):
-        from ._context import current_context
+        from ._context import current_stack_frame
 
         # FIXME: For some reason `ref 1` doesn't throw, even though I didn't
         # explicitly assign set 1=...
 
-        self.obj = current_context.get()[key]
+        self.obj = self._caller_stack_frame()[key]
 
     @classmethod
     def of(cls, obj: Object, /):
@@ -306,6 +368,7 @@ class ref(Object, FunctionAsClass):
         instance.obj = obj
         return instance
 
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         self = super().__new__(ref)
         key = args[0]
@@ -340,6 +403,7 @@ class op(Object, FunctionAsClass):
     def __init__(self, *args):
         super().__init__(*args)
 
+    @classmethod
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])

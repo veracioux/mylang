@@ -56,7 +56,10 @@ class Object:
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
     def __str__(self):
-        raise NotImplementedError("__str__ is not implemented for this object")
+        if hasattr(self, "_m_repr_"):
+            return str(self._m_repr_())
+        else:
+            raise NotImplementedError("__str__ is not implemented for this object")
 
     def _m_repr_(self) -> "String":
         """Return a string representation of the object that will be used in the mylang context."""

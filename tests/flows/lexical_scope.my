@@ -1,0 +1,29 @@
+f1v1 = unassigned
+f1v2 = unassigned
+f11v1 = unassigned
+f12v1 = unassigned
+
+fun f1 (
+    f1v1 = F1V1
+    fun f11 (
+        f11v1 = F11V1
+        return (f1v1={get f1v1} f1v2={get f1v2} f11v1={get f11v1} f12v1={get f12v1})
+    )
+    fun f12 (
+        f12v1 = F12V1
+        return (f1v1={get f1v1} f1v2={get f1v2} f11v1={get f11v1} f12v1={get f12v1})
+    )
+    f1v2 = F1V2
+    # TODO: Return the function f12 as well
+    return {get f11}
+)
+
+fun f2 (
+    return (f1v1={get f1v1} f1v2={get f1v2} f11v1={get f11v1} f12v1={get f12v1})
+)
+
+fun11 = {f1}
+
+echo "Function fun11 returned value:" {fun11}
+echo "Function f2 returned value:" {f2}
+echo "In module scope, the values are:" (f1v1={get f1v1} f1v2={get f1v2} f11v1={get f11v1} f1v2={get f1v2})
