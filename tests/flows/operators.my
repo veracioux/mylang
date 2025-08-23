@@ -1,2 +1,3 @@
-echo "a == b:" a == b
-# echo "a == b:" a == b
+call echo "a == b is" a == b
+x = 42
+echo "$x is" $x

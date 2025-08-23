@@ -76,9 +76,8 @@ def test_operators(capsys: CaptureFixture[str]):
     execute_module("operators.my")
     captured = capsys.readouterr()
 
-    assert captured.out == "a == b: false\n"
-
     assert captured.out.strip() == """
-a == b: false
+a == b is false
+$x is 42
     """.strip()
     assert captured.err == ""

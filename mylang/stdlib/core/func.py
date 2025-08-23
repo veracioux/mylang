@@ -152,6 +152,7 @@ class call(Object, FunctionAsClass):
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
             return python_callable(fun_args)
 
+
     @classmethod
     def _create_locals_for_callable(
         cls,

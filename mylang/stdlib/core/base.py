@@ -7,6 +7,7 @@ from ._utils import (
     mylang_obj_to_python,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
+    set_contextvar,
 )
 
 T = TypeVar("T", bound="Object")
@@ -132,17 +133,16 @@ class UnaryOperation(Operation, abc.ABC):
 class PrefixOperation(UnaryOperation):
     def evaluate(self) -> Object:
         from .func import op
+        from ._utils import currently_called_func
         from .complex import String
         # TODO: Differentiate prefix and postfix
-        return op(String(self.operator), self.operand)
+        with set_contextvar(currently_called_func, op._m_classcall_):
+            return op._m_classcall_(Args(String(self.operator), self.operand))
 
 
 class PostfixOperation(UnaryOperation):
     def evaluate(self) -> Object:
-        from .func import op
-        from .complex import String
-        # TODO: Differentiate prefix and postfix
-        return op(String(self.operator), self.operand)
+        PrefixOperation.evaluate(self)
 
 
 class BinaryOperation(Operation):
@@ -154,8 +154,10 @@ class BinaryOperation(Operation):
 
     def evaluate(self) -> Object:
         from .func import op
+        from ._utils import currently_called_func
         from .complex import String
-        return op(String(self.operator), *self.operands)
+        with set_contextvar(currently_called_func, op._m_classcall_):
+            return op._m_classcall_(Args(String(self.operator), *self.operands))
 
 
 # TODO: probably want class to be a typed object, but not sure how to do that
