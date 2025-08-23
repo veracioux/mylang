@@ -11,8 +11,17 @@ from .primitive import (
     null,
 )
 from .complex import String, Path
-from .base import Object, Args, Dict, Array
-from .func import fun, call, set, get, use, ref, op
+from .base import (
+    Object,
+    Args,
+    Dict,
+    Array,
+    Operation,
+    PrefixOperation,
+    PostfixOperation,
+    BinaryOperation,
+)
+from .func import fun, call, set_, get, use, ref, op
 from .flow import if_, return_
 
 __all__ = (
@@ -35,11 +44,15 @@ __all__ = (
     "ref",
     "fun",
     "call",
-    "set",
+    "set_",
     "get",
     "return_",
     "use",
     "ref",
     "if_",
     "op",
+    "Operation",
+    "PrefixOperation",
+    "PostfixOperation",
+    "BinaryOperation",
 )

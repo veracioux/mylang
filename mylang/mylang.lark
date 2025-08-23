@@ -10,11 +10,23 @@ BOOL: "true" | "false"
 NULL: "null"
 UNDEFINED: "undefined"
 UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z_][a-z0-9_]*/i
+_OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 ?string: ESCAPED_STRING | UNQUOTED_STRING
 
 ?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
 
+// TODO: Assignment could perhaps be a special case of binary operation
 assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
+!operator: _OPERATOR_SYMBOL
+        | ("=" (_OPERATOR_SYMBOL | "=")+)
+        | ((_OPERATOR_SYMBOL | "=") "=")
+// NOTE: The below precedence is set to obtain desired precedence within the
+// operator group, not globally
+prefix_operation.0: operator expression
+postfix_operation.0: expression operator
+binary_operation.3: (expression operator expression)
+                | (expression _WS+ operator _WS+ expression)
+_any_operation: prefix_operation | postfix_operation | binary_operation
 
 _ARG_SEPARATION_EXPLICIT: _WS_INLINE* "," _WS*
 _ARG_SEPARATION: _WS_INLINE+ | _ARG_SEPARATION_EXPLICIT
@@ -54,6 +66,7 @@ execution_block: "{" _WS* statement_list _WS* "}"
            | execution_block
            | array
            | ("(" _WS* statement_list _WS* ")")
+           | _any_operation
 
 %ignore _WS_INLINE
 %ignore SH_COMMENT

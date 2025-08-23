@@ -9,7 +9,7 @@ from mylang.stdlib.core._utils import (
 )
 from mylang.stdlib.core.base import Args, Array, Object
 from mylang.stdlib.core.complex import String
-from mylang.stdlib.core.func import StatementList, call, fun, set, get
+from mylang.stdlib.core.func import StatementList, call, fun, set_, get
 from mylang.stdlib.core.primitive import Int, undefined
 
 
@@ -116,20 +116,20 @@ class Test_fun:
 
 class Test_set:
     def test_call(self):
-        result = set(Args(a=1, b=2))
+        result = set_(Args(a=1, b=2))
         stack_frame = current_stack_frame.get()
         assert stack_frame[String("a")] == Int(1)
         assert stack_frame[String("b")] == Int(2)
         assert result is undefined
 
     def test_call_python_args_kwargs(self):
-        result = set(a=1)
+        result = set_(a=1)
         stack_frame = current_stack_frame.get()
         assert stack_frame[String("a")] == Int(1)
         assert result is undefined
 
     def test_empty_call(self):
-        result = set()
+        result = set_()
         stack_frame = current_stack_frame.get()
         assert stack_frame.locals == {}
         assert result is undefined
@@ -285,16 +285,17 @@ class Test_get:
 
 class Test_set_get:
     def test_set_then_get(self):
-        set(a=1, b=2)
+        set_(a=1, b=2)
         result_a = get("a")
         result_b = get("b")
         assert result_a == Int(1)
         assert result_b == Int(2)
 
     def test_set_key_obtained_using_get(self):
-        set(key="actual_key", actual_key="value")
+        set_(key="actual_key", actual_key="value")
         key = get("key")
         result = get(key)
         assert result == String("value")
 
 # TODO: Test function `ref`
+# TODO: This file is incomplete

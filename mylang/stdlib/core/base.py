@@ -1,3 +1,4 @@
+import abc
 import inspect
 from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
 
@@ -67,6 +68,89 @@ class Object:
 
     def __hash__(self):
         return id(self)
+
+
+class IncompleteExpression(abc.ABC):
+    """An expression that needs some processing in order to produce a value."""
+
+    @abc.abstractmethod
+    def evaluate(self) -> Object:
+        """Evaluate the expression recursively and get its value."""
+
+    @classmethod
+    def evaluate_all_in_object(cls, obj: Object):
+        """Execute all `IncompleteExpression`s recursively in the given object, and replace each with the value it returned.
+
+        The object and all its nested objects are modified in-place.
+
+        Note: A `StatementList` is a special case - it won't be evaluated.
+
+        Returns:
+            obj The possibly modified object.
+        """
+        from .func import StatementList, ExecutionBlock
+
+        if isinstance(obj, StatementList) and not isinstance(obj, ExecutionBlock):
+            return obj
+        if isinstance(obj, cls):
+            return obj.evaluate()
+        elif hasattr(obj, "_m_dict_"):
+            # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
+            for key, value in tuple(obj._m_dict_.items()):
+                new_key = cls.evaluate_all_in_object(key)
+                if new_key is not key:
+                    del obj._m_dict_[key]
+
+                obj._m_dict_[key] = cls.evaluate_all_in_object(value)
+        elif hasattr(obj, "_m_array_"):
+            # TODO: Implement
+            raise NotImplementedError
+
+        return obj
+
+
+class Operation(Object, IncompleteExpression, abc.ABC):
+    __slots__ = ("operator")
+
+    def __init__(self, operator: str):
+        self.operator = operator
+
+
+class UnaryOperation(Operation, abc.ABC):
+    __slots__ = ("operand")
+
+    def __init__(self, operator: str, operand: Object):
+        self.operator = operator
+        self.operand = operand
+
+
+class PrefixOperation(UnaryOperation):
+    def evaluate(self) -> Object:
+        from .func import op
+        from .complex import String
+        # TODO: Differentiate prefix and postfix
+        return op(String(self.operator), self.operand)
+
+
+class PostfixOperation(UnaryOperation):
+    def evaluate(self) -> Object:
+        from .func import op
+        from .complex import String
+        # TODO: Differentiate prefix and postfix
+        return op(String(self.operator), self.operand)
+
+
+class BinaryOperation(Operation):
+    __slots__ = ("operands")
+
+    def __init__(self, operator: str, operands: tuple[Object]):
+        super().__init__(operator)
+        self.operands = operands
+
+    def evaluate(self) -> Object:
+        from .func import op
+        from .complex import String
+        return op(String(self.operator), *self.operands)
 
 
 # TODO: probably want class to be a typed object, but not sure how to do that

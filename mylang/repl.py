@@ -6,6 +6,7 @@ from lark import ParseError, Tree, UnexpectedCharacters
 
 from mylang.parser import STATEMENT_LIST, parser
 from mylang.stdlib.core import Args, undefined, Object
+from mylang.stdlib.core.base import IncompleteExpression
 from mylang.transformer import Transformer
 from mylang.stdlib.core.func import StatementList, ExecutionBlock
 from mylang.stdlib import builtins as builtins_
@@ -104,12 +105,12 @@ def repl():
 
 def evaluate(statements: StatementList) -> Object:
     if len(statements) == 1 and not isinstance(statements[0], Args):
-        if isinstance(statements[0], ExecutionBlock):
-            return statements[0].execute()
+        if isinstance(statements[0], IncompleteExpression):
+            return statements[0].evaluate()
         else:
             return statements[0]
     else:
-        return statements.execute()
+        return statements.evaluate()
 
 
 def repl_print(obj: Object) -> None:

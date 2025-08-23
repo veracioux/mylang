@@ -4,6 +4,7 @@ import os
 from pytest import CaptureFixture
 
 from mylang.parser import STATEMENT_LIST, parser
+from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
 from mylang.stdlib.core._context import (
     nested_stack_frame,
@@ -23,8 +24,8 @@ def execute_module(*path_components: str):
         read_module(*path_components) as text,
     ):
         tree = parser.parse(text, start=STATEMENT_LIST)
-        statement_list = Transformer().transform(tree)
-        statement_list.execute()
+        statement_list: StatementList = Transformer().transform(tree)
+        statement_list.evaluate()
 
 
 def test_empty(capsys: CaptureFixture[str]):
@@ -68,4 +69,16 @@ def test_recursion(capsys: CaptureFixture[str]):
     captured = capsys.readouterr()
 
     assert captured.out == "Factorial of 5 is: 120\n"
+    assert captured.err == ""
+
+
+def test_operators(capsys: CaptureFixture[str]):
+    execute_module("operators.my")
+    captured = capsys.readouterr()
+
+    assert captured.out == "a == b: false\n"
+
+    assert captured.out.strip() == """
+a == b: false
+    """.strip()
     assert captured.err == ""

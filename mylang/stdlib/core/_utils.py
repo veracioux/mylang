@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def python_obj_to_mylang(obj):
-    """Convert a Python object to a MyLang object."""
+    """Convert a Python object to a MyLang analog."""
     from .base import Object
 
     if isinstance(obj, Object):

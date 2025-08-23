@@ -34,7 +34,11 @@ class Scalar(Primitive, Generic[TypeValue]):
         return f"{self.__class__.__name__}({self.value!r})"
 
     def __str__(self):
-        return str(self.value)
+        return str(self._m_str_())
+
+    def _m_str_(self):
+        from .complex import String
+        return String(str(self.value))
 
     def _m_repr_(self):
         from .complex import String
@@ -68,6 +72,9 @@ class Float(Number[float]):
 class Bool(Scalar[bool]):
     def _m_repr_(self):
         return "true" if self.value else "false"
+
+    def _m_str_(self):
+        return self._m_repr_()
 
 
 class Empty(Primitive, ABC):

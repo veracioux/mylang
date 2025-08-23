@@ -1,6 +1,7 @@
 from mylang.repl import repl
 import sys
 from mylang.parser import STATEMENT_LIST, parser
+from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
 from mylang.stdlib.core._context import StackFrame, current_stack_frame
 
@@ -28,8 +29,8 @@ def main():
         tree = parser.parse(input_file_data, start=STATEMENT_LIST)
         # TODO: Remove
         print("Syntax tree:\n", tree.pretty())
-        statement_list = Transformer().transform(tree)
-        statement_list.execute()
+        statement_list: StatementList = Transformer().transform(tree)
+        statement_list.evaluate()
     else:
         repl()
 

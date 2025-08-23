@@ -1,3 +1,5 @@
+import abc
+from typing import Union
 from lark import Transformer as _Transformer, Token, Tree
 
 from .stdlib.core import (
@@ -11,6 +13,9 @@ from .stdlib.core import (
     null,
     undefined,
     Array,
+    BinaryOperation,
+    PostfixOperation,
+    PrefixOperation,
 )
 
 __all__ = ("Transformer",)
@@ -68,3 +73,17 @@ class Transformer(_Transformer):
 
     def execution_block(self, items: tuple[StatementList]):
         return ExecutionBlock.from_list(items[0])
+
+    def prefix_operation(self, items: tuple[Tree, Object]):
+        return PrefixOperation(_operator_node_to_string(items[0]), items[1])
+
+    def postfix_operation(self, items: tuple[Object, Tree]):
+        return PostfixOperation(_operator_node_to_string(items[1]), items[0])
+
+    def binary_operation(self, items: tuple[Tree, Object, Object]):
+        return BinaryOperation(_operator_node_to_string(items[1]), (items[0], items[2]))
+
+
+def _operator_node_to_string(operator: Tree):
+    """The parsed operator yields a tree whose children are string tokens. This function merges them."""
+    return "".join(operator.children)

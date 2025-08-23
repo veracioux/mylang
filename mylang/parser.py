@@ -7,7 +7,7 @@ from typing import Any, Generic, TextIO, TypeVar, Union, final
 from lark import Lark
 from pathlib import Path
 
-from .stdlib.core import String, Object, Args, call, set, Primitive, Number, Bool, undefined, null, Float, Int
+from .stdlib.core import String, Object, Args, call, set_, Primitive, Number, Bool, undefined, null, Float, Int
 from .stdlib.core._context import nested_stack_frame
 
 
@@ -31,5 +31,3 @@ with open(Path(__file__).parent.absolute() / "mylang.lark") as f:
         # parser="lalr",
         start=_start,
     )
-
-

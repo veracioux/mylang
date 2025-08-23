@@ -18,7 +18,7 @@ class if_(Object, FunctionAsClass):
         statement_list = args[1]
         assert isinstance(statement_list, StatementList), "The second argument must be a StatementList"
         if condition:
-            return statement_list.execute()
+            return statement_list.evaluate()
         else:
             return undefined
 

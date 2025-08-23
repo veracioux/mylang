@@ -18,10 +18,10 @@ from ._utils import (
     set_contextvar,
     FunctionAsClass,
 )
-from .base import Args, Array, Dict, Object
+from .base import Args, Array, Dict, IncompleteExpression, Object
 from .primitive import Bool
 
-__all__ = ("fun", "call", "get", "set")
+__all__ = ("fun", "call", "get", "set_")
 
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         return call(ref.of(self), *args, **kwargs)
 
     def _m_call_(self, _: Args, /) -> TypeReturn:
-        return self.body.execute()
+        return self.body.evaluate()
 
 
 @expose
@@ -186,8 +186,9 @@ class get(Object, FunctionAsClass):
 
 @expose
 @function_defined_as_class
-class set(Object, FunctionAsClass):
+class set_(Object, FunctionAsClass):
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _m_name_ = "set"
 
     @classmethod
     def _m_classcall_(cls, args: Args, /):
@@ -277,12 +278,12 @@ class use(Object, FunctionAsClass):
     ):
         """Set the alias binding in the caller's lexical scope."""
         # TODO: Handle multiple args potentially
-        set(Args.from_dict({name: exported_value}))
+        set_(Args.from_dict({name: exported_value}))
 
 
-class StatementList(Array):
-    def execute(self) -> Object:
-        from . import Args, Object, call, set
+class StatementList(Array, IncompleteExpression):
+    def evaluate(self) -> Object:
+        from . import Args, Object, call, set_
 
         for i_statement, statement in enumerate(self):
             result: Object
@@ -290,10 +291,10 @@ class StatementList(Array):
             # won't be modified
             args = Args(statement)
 
-            ExecutionBlock.execute_all_in_object(args)
+            IncompleteExpression.evaluate_all_in_object(args)
 
             if args.is_keyed_only():
-                result = set(args)
+                result = set_(args)
             else:
                 result = call(args)
 
@@ -312,39 +313,14 @@ class StatementList(Array):
         return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
 
 
-class ExecutionBlock(StatementList):
-    def execute(self) -> Object:
+class ExecutionBlock(StatementList, IncompleteExpression):
+    def evaluate(self) -> Object:
         caller_stack_frame = current_stack_frame.get()
         with nested_stack_frame() as stack_frame:
             stack_frame.set_parent_lexical_scope(
                 caller_stack_frame.lexical_scope
             )
-            return super().execute()
-
-    @classmethod
-    def execute_all_in_object(cls, obj: Object):
-        """Execute all `ExecutionBlock`s recursively in the given object, and replace each with the value it returned.
-
-        The object and all its nested objects are modified in-place.
-
-        Returns:
-            obj The possibly modified object.
-        """
-        if isinstance(obj, cls):
-            return obj.execute()
-
-        if not hasattr(obj, "_m_dict_"):
-            return obj
-
-        # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
-        for key, value in tuple(obj._m_dict_.items()):
-            new_key = cls.execute_all_in_object(key)
-            if new_key is not key:
-                del obj._m_dict_[key]
-
-            obj._m_dict_[key] = cls.execute_all_in_object(value)
-
-        return obj
+            return super().evaluate()
 
 
 @expose
@@ -398,6 +374,7 @@ class op(Object, FunctionAsClass):
         "==": python_obj_to_mylang(lambda a, b: Bool(a == b)),
         "-": python_obj_to_mylang(lambda a, b: a - b),
         "*": python_obj_to_mylang(lambda a, b: a * b),
+        "$": get,
     }
 
     def __init__(self, *args):
