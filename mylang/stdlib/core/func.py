@@ -10,6 +10,7 @@ from ._context import (
     StackFrame,
 )
 from ._utils import (
+    Special,
     currently_called_func,
     expose,
     function_defined_as_class,
@@ -44,6 +45,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         super().__init__(name, *args, **kwargs)
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: "Args", /):
         # TODO: Args must have unique names
         func = super().__new__(cls)
@@ -68,6 +70,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     def __call__(self, *args, **kwargs) -> TypeReturn:
         return call(ref.of(self), *args, **kwargs)
 
+    @Special._m_call_
     def _m_call_(self, _: Args, /) -> TypeReturn:
         return self.body.evaluate()
 
@@ -106,6 +109,7 @@ class call(Object, FunctionAsClass):
         super().__init__(func_key, *args, **kwargs)
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
 
@@ -159,6 +163,7 @@ class call(Object, FunctionAsClass):
         #       as it will be able to access the `args` object directly
         locals_ = LocalsDict()
 
+        # TODO: De-hardcode this
         if hasattr(callable, "parameters"):
             for i, posarg in enumerate(callable.parameters[:]):
                 locals_[posarg] = args[i]
@@ -176,6 +181,7 @@ class get(Object, FunctionAsClass):
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
@@ -188,9 +194,10 @@ class get(Object, FunctionAsClass):
 @function_defined_as_class
 class set_(Object, FunctionAsClass):
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
-    _m_name_ = "set"
+    _m_name_ = Special._m_name_("set")
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         from .primitive import undefined
 
@@ -212,6 +219,7 @@ class use(Object, FunctionAsClass):
         super().__init__(source, use_cache=use_cache)
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         from .complex import String
 
@@ -307,6 +315,7 @@ class StatementList(Array, IncompleteExpression):
             if i_statement == len(self) - 1:
                 return result
 
+    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -345,6 +354,7 @@ class ref(Object, FunctionAsClass):
         return instance
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         self = super().__new__(ref)
         key = args[0]
@@ -357,6 +367,7 @@ class ref(Object, FunctionAsClass):
     def __repr__(self):
         return repr(self.obj)
 
+    @Special._m_repr_
     def _m_repr_(self):
         return self.obj._m_repr_()
 
@@ -381,6 +392,7 @@ class op(Object, FunctionAsClass):
         super().__init__(*args)
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])

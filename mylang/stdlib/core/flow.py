@@ -1,16 +1,17 @@
 from ._context import current_stack_frame, parent_stack_frame
 from .func import StatementList
-from ._utils import expose, function_defined_as_class, FunctionAsClass
+from ._utils import Special, expose, function_defined_as_class, FunctionAsClass
 from .base import class_, Object, Args
 from .primitive import undefined
 
 @expose
 @function_defined_as_class
 class if_(Object, FunctionAsClass):
-    _m_name_ = "if"
+    _m_name_ = Special._m_name_("if")
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args, /):
         # TODO: Validate args
         # TODO: Add else, else if
@@ -25,7 +26,7 @@ class if_(Object, FunctionAsClass):
 @expose
 @function_defined_as_class
 class return_(Object, FunctionAsClass):
-    _m_name_ = "return"
+    _m_name_ = Special._m_name_("return")
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod

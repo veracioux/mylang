@@ -3,6 +3,7 @@ import pytest
 from mylang.stdlib.core import ref, return_
 from mylang.stdlib.core._context import StackFrame, current_stack_frame
 from mylang.stdlib.core._utils import (
+    Special,
     function_defined_as_class,
     currently_called_func,
     FunctionAsClass,
@@ -139,6 +140,7 @@ class Test_call:
     @function_defined_as_class
     class func(Object, FunctionAsClass):
         @classmethod
+        @Special._m_classcall_
         def _m_classcall_(cls, args: Args, /):
             return Array.from_list(
                 ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]

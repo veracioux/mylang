@@ -11,6 +11,48 @@ if TYPE_CHECKING:
     from .func import fun
 
 
+T = TypeVar("T")
+
+
+class _SpecialAttrDescriptor:
+    def __set_name__(self, owner: "Special", name: str):
+        self.name = name
+
+    def __get__(self, instance, owner) -> "_SpecialAttrDescriptor":
+        if instance is not None:
+            raise RuntimeError(f"Cannot use {self.__class__.__name__} with instance")
+
+        return self
+
+    def __call__(self, value: T) -> T:
+        if callable(value) and value.__name__ != self.name:
+            raise ValueError(f"Function name must match special attribute name {self.name}. Got {value.__name__}")
+
+        return value
+
+    def __set__(self, instance, value):
+        raise AttributeError(f"Cannot set attribute {self.name}")
+
+
+class Special:
+    """A registry of all special attributes that MyLang uses, for better
+    maintainability, discoverability and easier refactoring.
+
+    Example:
+        class MyClass:
+            _m_dict_ = Special._m_dict_(value)
+    """
+    _m_dict_ = _SpecialAttrDescriptor()
+    _m_array_ = _SpecialAttrDescriptor()
+    _m_name_ = _SpecialAttrDescriptor()
+    _m_init_ = _SpecialAttrDescriptor()
+    _m_str_ = _SpecialAttrDescriptor()
+    _m_repr_ = _SpecialAttrDescriptor()
+    _m_setattr_ = _SpecialAttrDescriptor()
+    _m_call_ = _SpecialAttrDescriptor()
+    _m_classcall_ = _SpecialAttrDescriptor()
+
+
 def python_obj_to_mylang(obj):
     """Convert a Python object to a MyLang analog."""
     from .base import Object
@@ -95,6 +137,7 @@ class FunctionAsClass(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
+    @Special._m_classcall_
     def _m_classcall_(cls, args: "Args", /) -> "Object":
         """Called by the `call` function.
 
@@ -133,14 +176,14 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun"
         # Set the function name
         cls.name = (
             python_obj_to_mylang(cls._m_name_)
-            if hasattr(cls, "_m_name_")
+            if hasattr(cls, Special._m_name_.name)
             else String(cls.__name__)
         )
 
         if monkeypatch_methods:
-            cls._m_classcall_ = only_callable_by_call_decorator(cls._m_classcall_)
-            if hasattr(cls, "_m_call_"):
-                cls._m_call_ = only_callable_by_call_decorator(cls._m_call_)
+            cls._m_classcall_ = Special._m_classcall_(only_callable_by_call_decorator(cls._m_classcall_))
+            if hasattr(cls, Special._m_call_.name):
+                cls._m_call_ = Special._m_call_(only_callable_by_call_decorator(cls._m_call_))
 
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
@@ -223,6 +266,7 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
     @function_defined_as_class
     class __func(Object, FunctionAsClass):
         @classmethod
+        @Special._m_classcall_
         def _m_classcall_(cls, args: "Args", /):
             """Call the function with the given arguments."""
             return func(*args[:], **args.keyed_dict())

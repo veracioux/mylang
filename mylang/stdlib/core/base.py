@@ -3,6 +3,7 @@ import inspect
 from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
 
 from ._utils import (
+    Special,
     mylang_obj_to_python,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
@@ -28,9 +29,11 @@ class Object:
         else:
             self._m_init_(Args.from_dict(python_dict_from_args_kwargs(*args, **kwargs)))
 
+    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         assert isinstance(args, Args)
 
+    @Special._m_call_
     def _m_call_(self, args: "Args", /):
         """Called when the instance is called by the `call` function.
         The `call` function takes care of setting up the local context before it makes this call.
@@ -43,6 +46,7 @@ class Object:
         # TODO: Indicate that this function does not exist unless explicitly implemented by subclasses
         raise NotImplementedError
 
+    @Special._m_setattr_
     def _m_setattr_(self, key: "Object", value: "Object", /):
         assert False
 
@@ -57,11 +61,12 @@ class Object:
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
     def __str__(self):
-        if hasattr(self, "_m_repr_"):
+        if hasattr(self, Special._m_repr_.name):
             return str(self._m_repr_())
         else:
             raise NotImplementedError("__str__ is not implemented for this object")
 
+    @Special._m_repr_
     def _m_repr_(self) -> "String":
         """Return a string representation of the object that will be used in the mylang context."""
         raise NotImplementedError("repr is not implemented for this object")
@@ -94,7 +99,7 @@ class IncompleteExpression(abc.ABC):
             return obj
         if isinstance(obj, cls):
             return obj.evaluate()
-        elif hasattr(obj, "_m_dict_"):
+        elif hasattr(obj, Special._m_dict_.name):
             # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
             for key, value in tuple(obj._m_dict_.items()):
                 new_key = cls.evaluate_all_in_object(key)
@@ -102,7 +107,7 @@ class IncompleteExpression(abc.ABC):
                     del obj._m_dict_[key]
 
                 obj._m_dict_[key] = cls.evaluate_all_in_object(value)
-        elif hasattr(obj, "_m_array_"):
+        elif hasattr(obj, Special._m_array_.name):
             # TODO: Implement
             raise NotImplementedError
 
@@ -167,6 +172,7 @@ class TypedObject(Object):
 class Array(Object, Generic[T]):
     """An object that contains a sequence of objects."""
 
+    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         from .primitive import Int
 
@@ -178,7 +184,7 @@ class Array(Object, Generic[T]):
     @classmethod
     def from_list(cls, source: list, /):
         obj = cls.__new__(cls)
-        obj._m_array_ = [python_obj_to_mylang(x) for x in source]
+        obj._m_array_ = Special._m_array_([python_obj_to_mylang(x) for x in source])
         return obj
 
     def __eq__(self, other):
@@ -208,6 +214,7 @@ class Array(Object, Generic[T]):
     def __repr__(self):
         return f"{self.__class__.__name__}.from_list({self._m_array_!r})"
 
+    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -222,10 +229,12 @@ class Array(Object, Generic[T]):
 class Dict(Object):
     """An object that contains a mapping of keys to values."""
 
+    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
         self._m_dict_: dict[Object, Object] = args._m_dict_.copy()
 
+    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -243,31 +252,31 @@ class Dict(Object):
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
-        obj._m_dict_ = {
+        obj._m_dict_ = Special._m_dict_({
             python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in source.items()
-        }
+        })
         return obj
 
     def __setattr__(self, name: str, value: Any, /) -> None:
-        if name == "_m_dict_":
+        if name == Special._m_dict_.name:
             super().__setattr__(name, value)
         else:
             from .complex import String
 
             try:
-                getattr(self, "_m_dict_")
+                getattr(self, Special._m_dict_.name)
             except AttributeError:
-                super().__setattr__("_m_dict_", {})
+                super().__setattr__(Special._m_dict_.name, {})
             self._m_dict_[String(name)] = python_obj_to_mylang(value)
 
     def __getattribute__(self, name: str, /) -> Any:
-        if name == "_m_dict_":
-            return super().__getattribute__("_m_dict_")
+        if name == Special._m_dict_.name:
+            return super().__getattribute__(Special._m_dict_.name)
         else:
             from .complex import String
 
             key = String(name)
-            if hasattr(self, "_m_dict_") and key in self._m_dict_:
+            if hasattr(self, Special._m_dict_.name) and key in self._m_dict_:
                 return self._m_dict_[key]
             else:
                 return super().__getattribute__(name)
@@ -358,6 +367,7 @@ class Args(Dict):
         positional = (*other, *self[:])
         return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict())
 
+    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
         positional_args = self[:]

@@ -1,6 +1,8 @@
 import functools
 from typing import Any
 
+from ._utils import Special
+
 from .base import Args, Object
 
 
@@ -16,6 +18,7 @@ class String(Object):
         self.value = value
         super().__init__()
 
+    @Special._m_init_
     def _m_init_(self, value: str = ""):
         pass
 
@@ -39,5 +42,6 @@ class Path(Object):
     def __init__(self, *args):
         super().__init__(*args)
 
+    @Special._m_init_
     def _m_init_(self, args: Args, /):
         self.parts = args._m_dict_

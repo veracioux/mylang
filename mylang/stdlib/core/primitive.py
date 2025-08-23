@@ -1,5 +1,7 @@
 from abc import ABC
 from typing import Generic, TypeVar, final
+
+from ._utils import Special
 from .base import Object
 import functools
 
@@ -36,10 +38,12 @@ class Scalar(Primitive, Generic[TypeValue]):
     def __str__(self):
         return str(self._m_str_())
 
+    @Special._m_str_
     def _m_str_(self):
         from .complex import String
         return String(str(self.value))
 
+    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
         return String(repr(self.value))
@@ -70,9 +74,11 @@ class Float(Number[float]):
 
 
 class Bool(Scalar[bool]):
+    @Special._m_repr_
     def _m_repr_(self):
         return "true" if self.value else "false"
 
+    @Special._m_str_
     def _m_str_(self):
         return self._m_repr_()
 
@@ -84,12 +90,14 @@ class Empty(Primitive, ABC):
 
 @final
 class Null(Empty):
+    @Special._m_repr_
     def _m_repr_(self):
         return "null"
 
 
 @final
 class Undefined(Empty):
+    @Special._m_repr_
     def _m_repr_(self):
         return "undefined"
 

@@ -3,7 +3,8 @@
 Importing this module makes the built-in objects available in the current context.
 """
 
-from mylang.stdlib.core._context import LocalsDict
+from .core._context import LocalsDict
+from .core._utils import Special
 from .core import *
 from .core import op
 from .core import Object, String
@@ -16,7 +17,7 @@ def create_locals_dict():
 
     dict_ = LocalsDict(
         {
-            String(v._m_name_ if hasattr(v, "_m_name_") else k): v
+            String(v._m_name_ if hasattr(v, Special._m_name_.name) else k): v
             for k, v in globals().items()
             if (
                 not k.startswith("_")
