@@ -18,7 +18,7 @@ _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 
 // TODO: Assignment could perhaps be a special case of binary operation
 assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
-!operator: _OPERATOR_SYMBOL
+!operator: _OPERATOR_SYMBOL+
         | ("=" (_OPERATOR_SYMBOL | "=")+)
         | ((_OPERATOR_SYMBOL | "=")+ "=")
 // NOTE: The below precedence is set to obtain desired precedence within the

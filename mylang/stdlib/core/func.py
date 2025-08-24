@@ -385,8 +385,11 @@ class op(Object, FunctionAsClass):
     operators = {
         "==": python_obj_to_mylang(lambda a, b: Bool(a == b)),
         "-": python_obj_to_mylang(lambda a, b: a - b),
+        "+": python_obj_to_mylang(lambda a, b: a + b),
         "*": python_obj_to_mylang(lambda a, b: a * b),
         "$": get,
+        "&": ref,
+        "!": python_obj_to_mylang(lambda a: Bool(not a)),
     }
 
     def __init__(self, *args):

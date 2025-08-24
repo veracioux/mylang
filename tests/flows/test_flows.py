@@ -79,5 +79,11 @@ def test_operators(capsys: CaptureFixture[str]):
     assert captured.out.strip() == """
 a == b is false
 $x is 42
+&x is 42
+!x is false
+1.5 - 4 is -2.5
+0.3 * -4 is -1.2
+2e2 + 3 is 203.0
+1 + 2 + 3 is 6
     """.strip()
     assert captured.err == ""

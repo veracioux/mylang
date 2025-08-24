@@ -81,7 +81,7 @@ class Transformer(_Transformer):
         return PostfixOperation(_operator_node_to_string(items[1]), items[0])
 
     def binary_operation(self, items: tuple[Tree, Object, Object]):
-        return BinaryOperation(_operator_node_to_string(items[1]), (items[0], items[2]))
+        return BinaryOperation(_operator_node_to_string(items[1]), [items[0], items[2]])
 
 
 def _operator_node_to_string(operator: Tree):

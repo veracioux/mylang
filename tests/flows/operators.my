@@ -1,3 +1,9 @@
 call echo "a == b is" a == b
 x = 42
 echo "$x is" $x
+echo "&x is" &x
+echo "!x is" !x
+echo "1.5 - 4 is" 1.5-4
+echo "0.3 * -4 is" 0.3 * -4
+echo "2e2 + 3 is" 2e2 + 3
+echo "1 + 2 + 3 is" 1 + 2 + 3

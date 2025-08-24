@@ -98,66 +98,86 @@ class IncompleteExpression(abc.ABC):
 
         if isinstance(obj, StatementList) and not isinstance(obj, ExecutionBlock):
             return obj
-        if isinstance(obj, cls):
-            return obj.evaluate()
-        elif hasattr(obj, Special._m_dict_.name):
-            # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
-            for key, value in tuple(obj._m_dict_.items()):
+
+        dict_attributes = (
+            "__dict__",
+            *(
+                (Special._m_dict_.name,)
+                if hasattr(obj, Special._m_dict_.name)
+                else ()
+            ),
+        )
+
+        # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
+        for dict_attr in dict_attributes:
+            if not hasattr(obj, dict_attr):
+                continue
+
+            dict_ = getattr(obj, dict_attr)
+            for key, value in tuple(dict_.items()):
                 new_key = cls.evaluate_all_in_object(key)
                 if new_key is not key:
-                    del obj._m_dict_[key]
+                    del dict_[key]
 
-                obj._m_dict_[key] = cls.evaluate_all_in_object(value)
-        elif hasattr(obj, Special._m_array_.name):
+                dict_[key] = cls.evaluate_all_in_object(value)
+
+        if hasattr(obj, Special._m_array_.name):
             # TODO: Implement
-            raise NotImplementedError
+            pass
+
+        if isinstance(obj, cls):
+            return obj.evaluate()
 
         return obj
 
 
 class Operation(Object, IncompleteExpression, abc.ABC):
-    __slots__ = ("operator")
+    __slots__ = "operator"
 
     def __init__(self, operator: str):
         self.operator = operator
 
+    def _call_op(self, *operands: Object):
+        from .func import op
+        from ._utils import currently_called_func
+        from .complex import String
+
+        with set_contextvar(currently_called_func, op._m_classcall_):
+            return op._m_classcall_(Args(String(self.operator), *operands))
+
 
 class UnaryOperation(Operation, abc.ABC):
-    __slots__ = ("operand")
+    __slots__ = "operand"
 
     def __init__(self, operator: str, operand: Object):
         self.operator = operator
         self.operand = operand
 
+    def evaluate(self):
+        self.evaluate_all_in_object(self.operand)
+        return self._call_op(self.operand)
+
 
 class PrefixOperation(UnaryOperation):
-    def evaluate(self) -> Object:
-        from .func import op
-        from ._utils import currently_called_func
-        from .complex import String
-        # TODO: Differentiate prefix and postfix
-        with set_contextvar(currently_called_func, op._m_classcall_):
-            return op._m_classcall_(Args(String(self.operator), self.operand))
+    pass
 
 
 class PostfixOperation(UnaryOperation):
-    def evaluate(self) -> Object:
-        PrefixOperation.evaluate(self)
+    pass
 
 
 class BinaryOperation(Operation):
-    __slots__ = ("operands")
+    __slots__ = "operands"
 
-    def __init__(self, operator: str, operands: tuple[Object]):
+    def __init__(self, operator: str, operands: list[Object]):
         super().__init__(operator)
         self.operands = operands
 
-    def evaluate(self) -> Object:
-        from .func import op
-        from ._utils import currently_called_func
-        from .complex import String
-        with set_contextvar(currently_called_func, op._m_classcall_):
-            return op._m_classcall_(Args(String(self.operator), *self.operands))
+    def evaluate(self):
+        for i, operand in enumerate(self.operands):
+            self.operands[i] = self.evaluate_all_in_object(operand)
+
+        return self._call_op(*self.operands)
 
 
 # TODO: probably want class to be a typed object, but not sure how to do that
@@ -254,9 +274,12 @@ class Dict(Object):
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
-        obj._m_dict_ = Special._m_dict_({
-            python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in source.items()
-        })
+        obj._m_dict_ = Special._m_dict_(
+            {
+                python_obj_to_mylang(k): python_obj_to_mylang(v)
+                for k, v in source.items()
+            }
+        )
         return obj
 
     def __setattr__(self, name: str, value: Any, /) -> None:
@@ -372,6 +395,7 @@ class Args(Dict):
     @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
+
         positional_args = self[:]
         keyed_args = self.keyed_dict()
         string = ", ".join(
@@ -382,7 +406,7 @@ class Args(Dict):
                     ", ".join(
                         f"{k._m_repr_()}={v._m_repr_()}" for k, v in keyed_args.items()
                     ),
-                )
+                ),
             )
         )
         if len(positional_args) == 1 and len(keyed_args) == 0:
@@ -403,5 +427,7 @@ class Args(Dict):
         return not self.is_positional_only() and not self.is_keyed_only()
 
     @classmethod
-    def from_positional_keyed(cls, positional: Iterable, keyed: dict[Any, Any], /) -> "Args":
+    def from_positional_keyed(
+        cls, positional: Iterable, keyed: dict[Any, Any], /
+    ) -> "Args":
         return Args.from_dict(dict(enumerate(positional)) | keyed)
