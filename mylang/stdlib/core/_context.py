@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Any, Generic, Optional, Sequence, TypeVar, Union
+from typing import Any, Optional, Sequence, TypeVar, Union
 
 from mylang.stdlib.core._utils import python_obj_to_mylang
 from .base import Object
@@ -62,6 +62,8 @@ class LocalsDict:
 
 
 class LexicalScope:
+    __slots__ = ("locals", "parent", "last_called_function", "custom_data")
+
     def __init__(
         self,
         locals_: LocalsDict,
@@ -69,6 +71,19 @@ class LexicalScope:
     ):
         self.locals = locals_
         self.parent = parent
+        # TODO: Instead of an object reference, consider using some sort of
+        # `ref`-related mechanism that respects advice.
+        self.last_called_function: Optional[Object] = None
+        """The last function called in this lexical scope, if any.
+
+        Useful for control flow statements, e.g. `else` to check if it follows
+        an `if`.
+        """
+        self.custom_data = {}
+        """A dictionary for storing custom data related to this lexical scope.
+
+        Useful for context flow statements to communicate with each other.
+        """
 
     def __getitem__(self, key: Any) -> Object:
         key = python_obj_to_mylang(key)

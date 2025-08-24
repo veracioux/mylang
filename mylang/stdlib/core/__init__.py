@@ -22,7 +22,7 @@ from .base import (
     BinaryOperation,
 )
 from .func import fun, call, set_, get, use, ref, op
-from .flow import if_, return_
+from .flow import if_, else_, return_
 
 __all__ = (
     "Primitive",
@@ -50,6 +50,7 @@ __all__ = (
     "use",
     "ref",
     "if_",
+    "else_",
     "op",
     "Operation",
     "PrefixOperation",

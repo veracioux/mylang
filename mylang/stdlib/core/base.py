@@ -83,8 +83,8 @@ class IncompleteExpression(abc.ABC):
     def evaluate(self) -> Object:
         """Evaluate the expression recursively and get its value."""
 
-    @classmethod
-    def evaluate_all_in_object(cls, obj: Object):
+    @staticmethod
+    def evaluate_all_in_object(obj: Object):
         """Execute all `IncompleteExpression`s recursively in the given object, and replace each with the value it returned.
 
         The object and all its nested objects are modified in-place.
@@ -95,7 +95,7 @@ class IncompleteExpression(abc.ABC):
             obj The possibly modified object.
         """
         from .func import StatementList, ExecutionBlock
-
+        # TODO: Remove
         if isinstance(obj, StatementList) and not isinstance(obj, ExecutionBlock):
             return obj
 
@@ -108,25 +108,27 @@ class IncompleteExpression(abc.ABC):
             ),
         )
 
-        # Iterate through all top-level items and execute all ExecutionBlocks in the key and value, recursively
+        # Iterate through all top-level items and execute all ExecutionBlocks in
+        # the key and value, recursively
         for dict_attr in dict_attributes:
             if not hasattr(obj, dict_attr):
                 continue
 
             dict_ = getattr(obj, dict_attr)
             for key, value in tuple(dict_.items()):
-                new_key = cls.evaluate_all_in_object(key)
+                new_key = IncompleteExpression.evaluate_all_in_object(key)
                 if new_key is not key:
                     del dict_[key]
 
-                dict_[key] = cls.evaluate_all_in_object(value)
+                dict_[key] = IncompleteExpression.evaluate_all_in_object(value)
 
-        if hasattr(obj, Special._m_array_.name):
-            # TODO: Implement
-            pass
+        # if hasattr(obj, Special._m_array_.name):
+        #     arr = getattr(obj, Special._m_array_.name)
+        #     for i, item in enumerate(arr):
+        #         arr[i] = IncompleteExpression.evaluate_all_in_object(item)
 
-        if isinstance(obj, cls):
-            return obj.evaluate()
+        if isinstance(obj, IncompleteExpression):
+            obj = obj.evaluate()
 
         return obj
 
@@ -154,8 +156,7 @@ class UnaryOperation(Operation, abc.ABC):
         self.operand = operand
 
     def evaluate(self):
-        self.evaluate_all_in_object(self.operand)
-        return self._call_op(self.operand)
+        return self._call_op(self.evaluate_all_in_object(self.operand))
 
 
 class PrefixOperation(UnaryOperation):
@@ -174,10 +175,9 @@ class BinaryOperation(Operation):
         self.operands = operands
 
     def evaluate(self):
-        for i, operand in enumerate(self.operands):
-            self.operands[i] = self.evaluate_all_in_object(operand)
-
-        return self._call_op(*self.operands)
+        return self._call_op(
+            *(self.evaluate_all_in_object(operand) for operand in self.operands)
+        )
 
 
 # TODO: probably want class to be a typed object, but not sure how to do that

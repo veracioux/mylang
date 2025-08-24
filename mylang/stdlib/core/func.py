@@ -5,7 +5,6 @@ from ._context import (
     LocalsDict,
     current_stack_frame,
     nested_stack_frame,
-    parent_stack_frame,
     LexicalScope,
     StackFrame,
 )
@@ -15,12 +14,10 @@ from ._utils import (
     expose,
     function_defined_as_class,
     python_dict_from_args_kwargs,
-    python_obj_to_mylang,
     set_contextvar,
     FunctionAsClass,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object
-from .primitive import Bool
 
 __all__ = ("fun", "call", "get", "set_")
 
@@ -72,7 +69,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
 
     @Special._m_call_
     def _m_call_(self, _: Args, /) -> TypeReturn:
-        return self.body.evaluate()
+        return self.body.execute()
 
 
 @expose
@@ -150,7 +147,10 @@ class call(Object, FunctionAsClass):
             if isinstance(func := obj_to_call, fun):  # TODO: Generalize
                 stack_frame.set_parent_lexical_scope(func._surrounding_lexical_scope)
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
-            return python_callable(fun_args)
+            value = python_callable(fun_args)
+            if obj_to_call is not cls:
+                caller_stack_frame.lexical_scope.last_called_function = obj_to_call
+            return value
 
 
     @classmethod
@@ -290,9 +290,9 @@ class use(Object, FunctionAsClass):
         set_(Args.from_dict({name: exported_value}))
 
 
-class StatementList(Array, IncompleteExpression):
-    def evaluate(self) -> Object:
-        from . import Args, Object, call, set_
+class StatementList(Array):
+    def execute(self) -> Object:
+        from . import Args, Object, call, set_, undefined
 
         for i_statement, statement in enumerate(self):
             result: Object
@@ -315,6 +315,7 @@ class StatementList(Array, IncompleteExpression):
 
             if i_statement == len(self) - 1:
                 return result
+        return undefined
 
     @Special._m_repr_
     def _m_repr_(self):
@@ -330,8 +331,7 @@ class ExecutionBlock(StatementList, IncompleteExpression):
             stack_frame.set_parent_lexical_scope(
                 caller_stack_frame.lexical_scope
             )
-            return super().evaluate()
-
+            return super().execute()
 
 @expose
 @function_defined_as_class
@@ -340,8 +340,6 @@ class ref(Object, FunctionAsClass):
     _SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     def __init__(self, key: Object):
-        from ._context import current_stack_frame
-
         # FIXME: For some reason `ref 1` doesn't throw, even though I didn't
         # explicitly assign set 1=...
 

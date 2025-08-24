@@ -187,8 +187,7 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun"
 
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
-                from .func import call
-                from . import ref
+                from .func import call, ref
 
                 if currently_called_func.get() is __new__:
                     with set_contextvar(currently_called_func, cls._m_classcall_):
@@ -265,6 +264,9 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
 
     @function_defined_as_class
     class __func(Object, FunctionAsClass):
+        if func.__name__ != "<lambda>":
+            _m_name_ = Special._m_name_(func.__name__)
+
         @classmethod
         @Special._m_classcall_
         def _m_classcall_(cls, args: "Args", /):

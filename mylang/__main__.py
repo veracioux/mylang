@@ -30,7 +30,7 @@ def main():
         # TODO: Remove
         print("Syntax tree:\n", tree.pretty())
         statement_list: StatementList = Transformer().transform(tree)
-        statement_list.evaluate()
+        statement_list.execute()
     else:
         repl()
 

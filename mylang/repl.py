@@ -110,7 +110,7 @@ def evaluate(statements: StatementList) -> Object:
         else:
             return statements[0]
     else:
-        return statements.evaluate()
+        return statements.execute()
 
 
 def repl_print(obj: Object) -> None:
