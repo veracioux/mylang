@@ -43,7 +43,6 @@ class else_(Object, FunctionAsClass):
     @Special._m_classcall_
     def _m_classcall_(cls, args, /):
         stack_frame = current_stack_frame.get()
-        print(stack_frame.depth, stack_frame.lexical_scope.last_called_function)
         assert stack_frame.lexical_scope.last_called_function is if_, (
             "The else statement must follow an if statement"
         )

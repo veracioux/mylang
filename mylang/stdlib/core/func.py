@@ -290,7 +290,7 @@ class use(Object, FunctionAsClass):
         set_(Args.from_dict({name: exported_value}))
 
 
-class StatementList(Array):
+class StatementList(Array, IncompleteExpression):
     def execute(self) -> Object:
         from . import Args, Object, call, set_, undefined
 
@@ -299,8 +299,7 @@ class StatementList(Array):
             # Make sure an expression is converted to Args. If already Args, it
             # won't be modified
             args = Args(statement)
-
-            IncompleteExpression.evaluate_all_in_object(args)
+            args = IncompleteExpression.evaluate_all_in_object(args)
 
             if args.is_keyed_only():
                 result = set_(args)
@@ -316,6 +315,9 @@ class StatementList(Array):
             if i_statement == len(self) - 1:
                 return result
         return undefined
+
+    def evaluate(self):
+        return self
 
     @Special._m_repr_
     def _m_repr_(self):

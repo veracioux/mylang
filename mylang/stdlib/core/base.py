@@ -1,4 +1,5 @@
 import abc
+import copy
 import inspect
 from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
 
@@ -87,17 +88,17 @@ class IncompleteExpression(abc.ABC):
     def evaluate_all_in_object(obj: Object):
         """Execute all `IncompleteExpression`s recursively in the given object, and replace each with the value it returned.
 
-        The object and all its nested objects are modified in-place.
+        The object and all its nested objects are NOT modified in-place.
+        Instead, each object is copied, but only if needed (i.e. if any of its
+        children need to be transformed).
 
         Note: A `StatementList` is a special case - it won't be evaluated.
 
         Returns:
             obj The possibly modified object.
         """
-        from .func import StatementList, ExecutionBlock
-        # TODO: Remove
-        if isinstance(obj, StatementList) and not isinstance(obj, ExecutionBlock):
-            return obj
+        if isinstance(obj, IncompleteExpression):
+            return obj.evaluate()
 
         dict_attributes = (
             "__dict__",
@@ -108,27 +109,49 @@ class IncompleteExpression(abc.ABC):
             ),
         )
 
-        # Iterate through all top-level items and execute all ExecutionBlocks in
-        # the key and value, recursively
+        is_obj_copied = False
+
+        # Iterate through all top-level items in __dict__ and _m_dict_ and
+        # evaluate all incomplete expressions in the key and value, recursively
         for dict_attr in dict_attributes:
             if not hasattr(obj, dict_attr):
                 continue
 
             dict_ = getattr(obj, dict_attr)
+            is_dict_copied = False
+
             for key, value in tuple(dict_.items()):
                 new_key = IncompleteExpression.evaluate_all_in_object(key)
-                if new_key is not key:
-                    del dict_[key]
+                new_value = IncompleteExpression.evaluate_all_in_object(value)
 
-                dict_[key] = IncompleteExpression.evaluate_all_in_object(value)
+                if new_key is not key or new_value is not value:
+                    if not is_dict_copied:
+                        dict_ = copy.copy(dict_)
+                        is_dict_copied = True
+                    if not is_obj_copied:
+                        obj = copy.copy(obj)
+                        is_obj_copied = True
+                    if new_key is not key:
+                        del dict_[key]
+                    dict_[new_key] = new_value
+                    setattr(obj, dict_attr, dict_)
 
-        # if hasattr(obj, Special._m_array_.name):
-        #     arr = getattr(obj, Special._m_array_.name)
-        #     for i, item in enumerate(arr):
-        #         arr[i] = IncompleteExpression.evaluate_all_in_object(item)
-
-        if isinstance(obj, IncompleteExpression):
-            obj = obj.evaluate()
+        # Iterate through all items in _m_array_ and evaluate all incomplete
+        # expressions in them, recursively
+        if hasattr(obj, Special._m_array_.name):
+            arr = getattr(obj, Special._m_array_.name)
+            is_array_copied = False
+            for i, item in enumerate(arr):
+                new_item = IncompleteExpression.evaluate_all_in_object(item)
+                if new_item is not item:
+                    if not is_array_copied:
+                        arr = copy.copy(arr)
+                        is_array_copied = True
+                    if not is_obj_copied:
+                        obj = copy.copy(obj)
+                        is_obj_copied = True
+                    arr[i] = new_item
+                    setattr(obj, Special._m_array_.name, arr)
 
         return obj
 
