@@ -380,17 +380,10 @@ class ref(Object, FunctionAsClass):
 @final
 class op(Object, FunctionAsClass):
     """Invoke an operation by given operator in Polish notation."""
+    from ._operators import operators
 
     # TODO: Make the operation functions first class citizens
-    operators = {
-        "==": python_obj_to_mylang(lambda a, b: Bool(a == b)),
-        "-": python_obj_to_mylang(lambda a, b: a - b),
-        "+": python_obj_to_mylang(lambda a, b: a + b),
-        "*": python_obj_to_mylang(lambda a, b: a * b),
-        "$": get,
-        "&": ref,
-        "!": python_obj_to_mylang(lambda a: Bool(not a)),
-    }
+    operators = operators
 
     def __init__(self, *args):
         super().__init__(*args)
