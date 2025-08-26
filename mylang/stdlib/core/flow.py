@@ -1,3 +1,5 @@
+import abc
+import dataclasses
 from typing import NamedTuple
 
 from .func import StatementList
@@ -10,6 +12,14 @@ from .complex import String
 
 class _Symbols:
     CURRENT_IF_BLOCK_DATA = type("_CURRENT_IF_BLOCK_DATA", (object,), {})
+    CURRENT_LOOP_DATA = type("_CURRENT_LOOP_DATA", (object,), {})
+
+
+@dataclasses.dataclass
+class _LoopData:
+    copied_statement_list: StatementList
+    broken: bool = False
+    should_continue: bool = False
 
 
 @expose
@@ -32,7 +42,7 @@ class if_(Object, FunctionAsClass):
         statement_list = args[-1]
         assert isinstance(
             statement_list, StatementList
-        ), "The last argument must be a StatementList"
+        ), "The last argument of an if must be a StatementList"
         # Complex if statement with nested conditions and (optional) else
         if condition is None:
             # TODO: Make this kind of behavior a first-class citizen
@@ -63,7 +73,7 @@ class if_(Object, FunctionAsClass):
                     # Replace the first argument with a ref of `if` (the simple case with a single condition)
                     modified_statement_list[i][0] = ref.of(cls)
 
-            current_stack_frame.get().lexical_scope.custom_data[
+            cls._caller_stack_frame().lexical_scope.custom_data[
                 _Symbols.CURRENT_IF_BLOCK_DATA
             ] = cls.__IfBlockData(modified_statement_list)
 
@@ -71,7 +81,7 @@ class if_(Object, FunctionAsClass):
             return value
         # Simple if statement with single condition
         elif condition:
-            if_block_data = current_stack_frame.get().lexical_scope.custom_data.get(
+            if_block_data = cls._caller_stack_frame().lexical_scope.custom_data.get(
                 _Symbols.CURRENT_IF_BLOCK_DATA, None
             )
             if if_block_data is not None:
@@ -93,15 +103,6 @@ class if_(Object, FunctionAsClass):
             ), "if requires exactly 1 argument"
             return statement_list.execute()
 
-    @classmethod
-    def _update_if_block_data(
-        cls,
-    ):
-        """Update the data regarding the current if-else block in the current stack frame."""
-        current_stack_frame.get().lexical_scope.custom_data.setdefault(
-            _Symbols.CURRENT_IF_BLOCK_DATA, cls.__IfBlockData()
-        )
-
 
 @expose
 @function_defined_as_class
@@ -120,6 +121,113 @@ class return_(Object, FunctionAsClass):
             args[0] if len(args) == 1 else undefined
         )
         return return_value
+
+
+@expose
+@function_defined_as_class
+class loop(Object, FunctionAsClass):
+    """Loop forever, until a `break` statement is encountered, or a `while`
+    condition is no longer true."""
+
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        assert len(args) == 1, "loop requires exactly one argument"
+        assert isinstance(
+            args[0], StatementList
+        ), "The argument to loop must be a StatementList"
+
+        copied_statement_list = StatementList.from_iterable(args[0])
+        stack_frame = cls._caller_stack_frame()
+        loop_data = _LoopData(copied_statement_list=copied_statement_list)
+        stack_frame.lexical_scope.custom_data[_Symbols.CURRENT_LOOP_DATA] = loop_data
+        # TODO: Consider adding some return value from the loop
+        while True:
+            # Execute statement list (it will abort something breaks or continues the loop)
+            copied_statement_list.execute()
+
+            # Check if break or return was called
+            if loop_data.broken or stack_frame.return_value is not None:
+                return undefined
+            # Check if continue was called
+            elif loop_data.should_continue:
+                loop_data.should_continue = False
+                copied_statement_list.aborted = False
+
+
+class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    @abc.abstractmethod
+    def _m_classcall_(cls, args: Args, /):
+        ...
+
+    @classmethod
+    def _get_loop_data(cls) -> _LoopData:
+        stack_frame = cls._caller_stack_frame()
+        loop_data = stack_frame.lexical_scope.custom_data.get(
+            _Symbols.CURRENT_LOOP_DATA, None
+        )
+        assert loop_data is not None, f"{getattr(cls, Special._m_name_.name)} statement not inside a loop"
+        return loop_data
+
+
+@expose
+@function_defined_as_class
+class while_(_LoopControlFunction):
+    _m_name_ = Special._m_name_("while")
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        assert len(args) == 1, "while requires exactly 1 argument"
+        condition = args[0]
+        loop_data = cls._get_loop_data()
+
+        if not condition:
+            loop_data.broken = True
+            loop_data.copied_statement_list.aborted = True
+            return undefined
+
+
+@expose
+@function_defined_as_class
+class break_(_LoopControlFunction):
+    """Break out of a loop."""
+
+    _m_name_ = Special._m_name_("break")
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        if len(args) != 0:
+            raise ValueError("break does not take any arguments")
+        loop_data = cls._get_loop_data()
+        loop_data.broken = True
+        loop_data.copied_statement_list.aborted = True
+        return undefined
+
+
+@expose
+@function_defined_as_class
+class continue_(_LoopControlFunction):
+    _m_name_ = Special._m_name_("continue")
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        if len(args) != 0:
+            raise ValueError("continue does not take any arguments")
+        loop_data = cls._get_loop_data()
+        loop_data.should_continue = True
+        loop_data.copied_statement_list.aborted = True
+        return undefined
 
 
 # TODO: Maybe move somewhere else
