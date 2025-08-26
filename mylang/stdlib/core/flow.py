@@ -34,6 +34,18 @@ class return_(Object, FunctionAsClass):
         return return_value
 
 
+@expose
+@function_defined_as_class
+class ignore(Object, FunctionAsClass):
+    """Do nothing. Ignores all its arguments."""
+    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        return undefined
+
+
 # TODO
 
 
