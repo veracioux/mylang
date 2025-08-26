@@ -4,7 +4,6 @@ from typing import NamedTuple
 
 from .func import StatementList
 from ._utils import Special, expose, function_defined_as_class, FunctionAsClass
-from ._context import current_stack_frame
 from .base import class_, Object, Args
 from .primitive import undefined
 from .complex import String

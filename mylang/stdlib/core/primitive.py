@@ -41,39 +41,41 @@ class Scalar(Primitive, Generic[TypeValue]):
     @Special._m_str_
     def _m_str_(self):
         from .complex import String
+
         return String(str(self.value))
 
     @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
+
         return String(repr(self.value))
 
 
 class Number(Scalar[TypeValue], Generic[TypeValue]):
-    def __sub__(self, other: 'Number'):
+    def __sub__(self, other: "Number"):
         return self.__class__(self.value - other.value)
 
-    def __add__(self, other: 'Number'):
+    def __add__(self, other: "Number"):
         return self.__class__(self.value + other.value)
 
-    def __mul__(self, other: 'Number'):
+    def __mul__(self, other: "Number"):
         return self.__class__(self.value * other.value)
 
-    def __truediv__(self, other: 'Number'):
+    def __truediv__(self, other: "Number"):
         if other.value == 0:
             raise ZeroDivisionError("division by zero")
         return self.__class__(self.value / other.value)
 
-    def __gt__(self, other: 'Number'):
+    def __gt__(self, other: "Number"):
         return Bool(self.value > other.value)
 
-    def __ge__(self, other: 'Number'):
+    def __ge__(self, other: "Number"):
         return Bool(self.value >= other.value)
 
-    def __lt__(self, other: 'Number'):
+    def __lt__(self, other: "Number"):
         return Bool(self.value < other.value)
 
-    def __le__(self, other: 'Number'):
+    def __le__(self, other: "Number"):
         return Bool(self.value <= other.value)
 
     def __int__(self):

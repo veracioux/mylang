@@ -107,11 +107,7 @@ class IncompleteExpression(abc.ABC):
 
         dict_attributes = (
             "__dict__",
-            *(
-                (Special._m_dict_.name,)
-                if hasattr(obj, Special._m_dict_.name)
-                else ()
-            ),
+            *((Special._m_dict_.name,) if hasattr(obj, Special._m_dict_.name) else ()),
         )
 
         is_obj_copied = False
@@ -397,6 +393,7 @@ class Args(Dict):
             return Array.from_iterable(positional_args[key])
         else:
             from .primitive import Int
+
             if isinstance(key, (int, Int)) and (_key := int(key)) < 0:
                 key = len(self[:]) + _key
             return self._m_dict_[python_obj_to_mylang(key)]

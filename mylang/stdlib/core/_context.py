@@ -12,6 +12,7 @@ TypeIdentityDictValue = TypeVar("TypeIdentityDictValue", bound=Object)
 
 class LocalsDict:
     """A dictionary that uses object identity (is) instead of hash and equality (==) for keys."""
+
     __slots__ = ("_dict",)
 
     class _KeyWrapper:
@@ -27,7 +28,9 @@ class LocalsDict:
             return self.key is other.key
 
     def __init__(self, items_or_dict: Union[dict, Sequence[tuple]] = (), /):
-        items = items_or_dict.items() if isinstance(items_or_dict, dict) else items_or_dict
+        items = (
+            items_or_dict.items() if isinstance(items_or_dict, dict) else items_or_dict
+        )
         self._dict: dict["LocalsDict._KeyWrapper", TypeIdentityDictValue] = {
             (
                 self._KeyWrapper(key)
@@ -98,7 +101,14 @@ class LexicalScope:
 
 
 class StackFrame:
-    __slots__ = ("locals", "parent", "lexical_scope", "return_value", "depth", "_reset_token")
+    __slots__ = (
+        "locals",
+        "parent",
+        "lexical_scope",
+        "return_value",
+        "depth",
+        "_reset_token",
+    )
 
     def __init__(
         self,
@@ -110,7 +120,8 @@ class StackFrame:
         self.locals = locals_ or LocalsDict()
         self.parent = parent
         self.lexical_scope = lexical_scope or LexicalScope(
-            self.locals, parent=None,
+            self.locals,
+            parent=None,
         )
         self.return_value: Optional[Object] = None
         self.depth = self.parent.depth + 1 if self.parent is not None else 0
@@ -145,7 +156,9 @@ TypeContextVarValue = TypeVar("TypeContextVarValue")
 
 
 @contextmanager
-def _change_context_var(context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue):
+def _change_context_var(
+    context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue
+):
     """Switch the current context to the given context."""
     reset_token = context_var.set(value)
 
@@ -156,7 +169,11 @@ def _change_context_var(context_var: ContextVar[TypeContextVarValue], value: Typ
 
 
 @contextmanager
-def nested_stack_frame(locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None):
+def nested_stack_frame(
+    locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None
+):
     this_stack_frame = current_stack_frame.get()
-    with StackFrame(locals_, parent=this_stack_frame, lexical_scope=lexical_scope) as new_stack_frame:
+    with StackFrame(
+        locals_, parent=this_stack_frame, lexical_scope=lexical_scope
+    ) as new_stack_frame:
         yield new_stack_frame
