@@ -74,7 +74,7 @@ def python_obj_to_mylang(obj):
     elif isinstance(obj, list):
         from .base import Array
 
-        return Array.from_list(obj)
+        return Array.from_iterable(obj)
     elif obj is None:
         from .primitive import undefined
 

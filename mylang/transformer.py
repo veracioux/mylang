@@ -66,13 +66,13 @@ class Transformer(_Transformer):
         return Dict(self.args(items))
 
     def array(self, items: list[Object]):
-        return Array.from_list(items)
+        return Array.from_iterable(items)
 
     def statement_list(self, statements: list[Object]):
-        return StatementList.from_list(statements)
+        return StatementList.from_iterable(statements)
 
     def execution_block(self, items: tuple[StatementList]):
-        return ExecutionBlock.from_list(items[0])
+        return ExecutionBlock.from_iterable(items[0])
 
     def prefix_operation(self, items: tuple[Tree, Object]):
         return PrefixOperation(_operator_node_to_string(items[0]), items[1])

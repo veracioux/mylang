@@ -227,7 +227,7 @@ class Array(Object, Generic[T]):
 
     # TODO: Rename to from_iterable
     @classmethod
-    def from_list(cls, source: list, /):
+    def from_iterable(cls, source: Iterable, /):
         obj = cls.__new__(cls)
         obj._m_array_ = Special._m_array_([python_obj_to_mylang(x) for x in source])
         return obj
@@ -253,7 +253,7 @@ class Array(Object, Generic[T]):
     def __getitem__(self, key: Any, /) -> Object:
         result = self._m_array_[key]
         if isinstance(result, list):
-            return Array.from_list(result)
+            return Array.from_iterable(result)
         return result
 
     def __repr__(self):
@@ -388,7 +388,7 @@ class Args(Dict):
             positional_args = tuple(
                 v for k, v in self._m_dict_.items() if isinstance(k, Int)
             )
-            return Array.from_list(positional_args[key])
+            return Array.from_iterable(positional_args[key])
         else:
             return self._m_dict_[python_obj_to_mylang(key)]
 

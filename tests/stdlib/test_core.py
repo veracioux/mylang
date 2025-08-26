@@ -85,7 +85,7 @@ class TestArray:
         assert args._m_array_ == []
 
     def test_construct_from_list(self):
-        array = Array.from_list([1, 2, 3])
+        array = Array.from_iterable([1, 2, 3])
         assert array._m_array_ == [1, 2, 3]
 
 
@@ -108,7 +108,7 @@ class Test_fun:
         ```
         """
         current_stack_frame.get().locals["return"] = return_
-        f = fun(Args("return_constant", StatementList.from_list([Args("return", 42)])))
+        f = fun(Args("return_constant", StatementList.from_iterable([Args("return", 42)])))
         result = f()
         assert result == Int(42)
 
@@ -142,13 +142,13 @@ class Test_call:
         @classmethod
         @Special._m_classcall_
         def _m_classcall_(cls, args: Args, /):
-            return Array.from_list(
+            return Array.from_iterable(
                 ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]
             )
 
     def assert_result_correct(self, result):
         assert isinstance(result, Array)
-        assert result._m_array_ == Array.from_list(
+        assert result._m_array_ == Array.from_iterable(
             [
                 String("func_called"),
                 String("arg0"),
