@@ -1,5 +1,5 @@
 from ._utils import python_obj_to_mylang
-from .base import Object
+from .base import Object, Args
 from .primitive import Bool
 
 
@@ -40,19 +40,40 @@ def add(a, b):
 def multiply(a, b):
     return a * b
 
+# TODO: Add missing tests
+
+@_op(">")
+def gt(a, b):
+    return a > b
+
+
+@_op(">=")
+def ge(a, b):
+    return a >= b
+
+
+@_op("<")
+def lt(a, b):
+    return a < b
+
+
+@_op("<=")
+def le(a, b):
+    return a <= b
+
 
 @_op("$", convert_func_to_mylang=False)
 def dollar(a):
-    from .func import get
+    from .func import call, ref, get
 
-    return get(a)
+    return call._m_classcall_(Args(ref.of(get), a))
 
 
 @_op("&", convert_func_to_mylang=False)
 def ampersand(a):
-    from .func import ref
+    from .func import call, ref
 
-    return ref(a)
+    return call._m_classcall_(Args(ref.of(ref), a))
 
 
 @_op("!")

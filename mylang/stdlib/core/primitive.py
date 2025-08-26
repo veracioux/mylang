@@ -64,6 +64,18 @@ class Number(Scalar[TypeValue], Generic[TypeValue]):
             raise ZeroDivisionError("division by zero")
         return self.__class__(self.value / other.value)
 
+    def __gt__(self, other: 'Number'):
+        return Bool(self.value > other.value)
+
+    def __ge__(self, other: 'Number'):
+        return Bool(self.value >= other.value)
+
+    def __lt__(self, other: 'Number'):
+        return Bool(self.value < other.value)
+
+    def __le__(self, other: 'Number'):
+        return Bool(self.value <= other.value)
+
     def __int__(self):
         return int(self.value)
 
