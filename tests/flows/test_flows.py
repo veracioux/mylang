@@ -99,3 +99,20 @@ def test_if_else(capsys: CaptureFixture[str]):
 {f 4} returned: _4
     """.strip()
     assert captured.err == ""
+
+
+def test_loop(capsys: CaptureFixture[str]):
+    execute_module("loop.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+x = 2
+x = 1
+x = 0
+after 1st loop $x is 0
+x = 1
+after 2nd loop $x is 1
+x = 3
+after 3rd loop $x is 4
+    """.strip()
+    assert captured.err == ""
