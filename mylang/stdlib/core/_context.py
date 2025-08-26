@@ -98,21 +98,24 @@ class LexicalScope:
 
 
 class StackFrame:
-    __slots__ = ("locals", "parent", "lexical_scope", "return_value", "depth")
+    __slots__ = ("locals", "parent", "lexical_scope", "return_value", "depth", "_reset_token")
 
     def __init__(
         self,
         locals_: LocalsDict = None,
         parent: Optional["StackFrame"] = None,
+        lexical_scope: Optional[LexicalScope] = None,
     ):
         # TODO: Make readonly
         self.locals = locals_ or LocalsDict()
         self.parent = parent
-        self.lexical_scope = LexicalScope(
+        self.lexical_scope = lexical_scope or LexicalScope(
             self.locals, parent=None,
         )
         self.return_value: Optional[Object] = None
         self.depth = self.parent.depth + 1 if self.parent is not None else 0
+        self._reset_token = None
+        """The reset token for the context variable."""
 
     def set_parent_lexical_scope(self, parent: Optional[LexicalScope]):
         """Set the parent lexical scope of this stack frame's lexical scope."""
@@ -120,6 +123,18 @@ class StackFrame:
 
     def __getitem__(self, key: Any) -> Object:
         return self.lexical_scope[key]
+
+    def __enter__(self):
+        if current_stack_frame.get() is self:
+            raise RuntimeError("Stack frame is already the current stack frame.")
+        self._reset_token = current_stack_frame.set(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _ = exc_type, exc_value, traceback
+        if self._reset_token is not None:
+            current_stack_frame.reset(self._reset_token)
+            self._reset_token = None
 
 
 current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)
@@ -141,20 +156,7 @@ def _change_context_var(context_var: ContextVar[TypeContextVarValue], value: Typ
 
 
 @contextmanager
-def nested_stack_frame(locals_: LocalsDict = None, /):
+def nested_stack_frame(locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None):
     this_stack_frame = current_stack_frame.get()
-    with _change_context_var(
-        current_stack_frame, StackFrame(locals_, parent=this_stack_frame)
-    ) as new_stack_frame:
-        yield new_stack_frame
-
-
-@contextmanager
-def parent_stack_frame():
-    """Switch to the parent context of the current context."""
-    this_stack_frame = current_stack_frame.get()
-    if this_stack_frame.parent is None:
-        raise RuntimeError("No parent stack frame available.")
-
-    with _change_context_var(current_stack_frame, this_stack_frame.parent) as new_stack_frame:
+    with StackFrame(locals_, parent=this_stack_frame, lexical_scope=lexical_scope) as new_stack_frame:
         yield new_stack_frame
