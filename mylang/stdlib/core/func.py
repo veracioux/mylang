@@ -290,9 +290,14 @@ class use(Object, FunctionAsClass):
         set_(Args.from_dict({name: exported_value}))
 
 
-class StatementList(Array, IncompleteExpression):
+class StatementList(Array[Args]):
+    def __init__(self, *args, **kwargs):
+        self.aborted = False
+        """Used by executed code to signal that the execution of the StatementList should be aborted."""
+        super().__init__(*args, **kwargs)
+
     def execute(self) -> Object:
-        from . import Args, Object, call, set_, undefined
+        from . import undefined
 
         for i_statement, statement in enumerate(self):
             result: Object
@@ -314,10 +319,11 @@ class StatementList(Array, IncompleteExpression):
 
             if i_statement == len(self) - 1:
                 return result
-        return undefined
 
-    def evaluate(self):
-        return self
+            if self.aborted:
+                return stack_frame.return_value or undefined
+
+        return undefined
 
     @Special._m_repr_
     def _m_repr_(self):

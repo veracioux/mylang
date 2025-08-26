@@ -87,3 +87,15 @@ $x is 42
 1 + 2 + 3 is 6
     """.strip()
     assert captured.err == ""
+
+def test_if_else(capsys: CaptureFixture[str]):
+    execute_module("if_else.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+{f 1} returned: _1
+{f 2} returned: _2
+{f 3} returned: _3
+{f 4} returned: _4
+    """.strip()
+    assert captured.err == ""

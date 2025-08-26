@@ -97,8 +97,13 @@ class IncompleteExpression(abc.ABC):
         Returns:
             obj The possibly modified object.
         """
+        from .func import StatementList
+
         if isinstance(obj, IncompleteExpression):
             return obj.evaluate()
+
+        if isinstance(obj, StatementList):
+            return obj
 
         dict_attributes = (
             "__dict__",
@@ -227,8 +232,9 @@ class Array(Object, Generic[T]):
 
     # TODO: Rename to from_iterable
     @classmethod
-    def from_iterable(cls, source: Iterable, /):
+    def from_iterable(cls, source: Iterable[T], /):
         obj = cls.__new__(cls)
+        obj.__init__()
         obj._m_array_ = Special._m_array_([python_obj_to_mylang(x) for x in source])
         return obj
 
@@ -248,9 +254,9 @@ class Array(Object, Generic[T]):
         return len(self._m_array_)
 
     @overload
-    def __getitem__(self, key: slice, /) -> "Array": ...
+    def __getitem__(self, key: slice, /) -> "Array[T]": ...
 
-    def __getitem__(self, key: Any, /) -> Object:
+    def __getitem__(self, key: Any, /) -> T:
         result = self._m_array_[key]
         if isinstance(result, list):
             return Array.from_iterable(result)
@@ -390,6 +396,9 @@ class Args(Dict):
             )
             return Array.from_iterable(positional_args[key])
         else:
+            from .primitive import Int
+            if isinstance(key, (int, Int)) and (_key := int(key)) < 0:
+                key = len(self[:]) + _key
             return self._m_dict_[python_obj_to_mylang(key)]
 
     def __contains__(self, key: Any, /) -> bool:

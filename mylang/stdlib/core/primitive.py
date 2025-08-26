@@ -64,6 +64,12 @@ class Number(Scalar[TypeValue], Generic[TypeValue]):
             raise ZeroDivisionError("division by zero")
         return self.__class__(self.value / other.value)
 
+    def __int__(self):
+        return int(self.value)
+
+    def __float__(self):
+        return float(self.value)
+
 
 class Int(Number[int]):
     pass

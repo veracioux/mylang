@@ -79,6 +79,8 @@ class LexicalScope:
         Useful for control flow statements, e.g. `else` to check if it follows
         an `if`.
         """
+
+        # TODO: Move to StackFrame
         self.custom_data = {}
         """A dictionary for storing custom data related to this lexical scope.
 
@@ -96,6 +98,8 @@ class LexicalScope:
 
 
 class StackFrame:
+    __slots__ = ("locals", "parent", "lexical_scope", "return_value", "depth")
+
     def __init__(
         self,
         locals_: LocalsDict = None,
