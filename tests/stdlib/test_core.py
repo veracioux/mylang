@@ -8,8 +8,8 @@ from mylang.stdlib.core._utils import (
     currently_called_func,
     FunctionAsClass,
 )
-from mylang.stdlib.core.base import Args, Array, Object
-from mylang.stdlib.core.complex import String
+from mylang.stdlib.core.base import Args, Array, Dict, Object
+from mylang.stdlib.core.complex import Path, String
 from mylang.stdlib.core.func import StatementList, call, fun, set_, get
 from mylang.stdlib.core.primitive import Int, undefined
 
@@ -134,6 +134,14 @@ class Test_set:
         stack_frame = current_stack_frame.get()
         assert stack_frame.locals == {}
         assert result is undefined
+
+    def test_set_path(self):
+        obj = Dict()
+        current_stack_frame.get().locals["obj"] = obj
+        set_(Args.from_dict({Path("obj", "a"): Dict(b=1)}))
+        set_(Args.from_dict({Path("obj", "a", "c"): 2}))
+
+        assert obj == Dict(a=Dict(b=1, c=2))
 
 
 class Test_call:
@@ -283,6 +291,15 @@ class Test_get:
         # TODO: Use custom exception
         with pytest.raises(KeyError):
             get("non_existing_key")
+
+    def test_get_path(self):
+        obj = Dict(a=1, b=Dict(c=2))
+        current_stack_frame.get().locals["obj"] = obj
+        b = get(Path("obj", "b"))
+        c = get(Path("obj", "b", "c"))
+
+        assert b == Dict(c=2)
+        assert c == Int(2)
 
 
 class Test_set_get:

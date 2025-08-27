@@ -44,4 +44,6 @@ class Path(Object):
 
     @Special._m_init_
     def _m_init_(self, args: Args, /):
-        self.parts = args._m_dict_
+        assert args.is_positional_only, "Path takes only positional arguments"
+        assert len(args) > 1, "Path must have at least two parts"
+        self.parts = tuple(args[:])

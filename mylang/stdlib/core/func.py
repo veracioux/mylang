@@ -18,6 +18,7 @@ from ._utils import (
     FunctionAsClass,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object
+from .complex import Path
 
 __all__ = ("fun", "call", "get", "set_")
 
@@ -188,7 +189,15 @@ class get(Object, FunctionAsClass):
         assert len(args) == 1, "get function requires exactly one argument"
         if isinstance(args[0], ref):
             return args[0].obj
-        return cls._caller_stack_frame().lexical_scope[args[0]]
+
+        parts = args[0].parts if isinstance(args[0], Path) else (args[0],)
+
+        obj = cls._caller_stack_frame().lexical_scope
+
+        for part in parts:
+            obj = _getattr(obj, part)
+
+        return obj
 
 
 @expose
@@ -204,7 +213,14 @@ class set_(Object, FunctionAsClass):
 
         lexical_scope_locals = cls._caller_stack_frame().lexical_scope.locals
         for key, value in args._m_dict_.items():
-            lexical_scope_locals[key] = value
+            obj = lexical_scope_locals
+            if isinstance(key, Path):
+                for part in key.parts[:-1]:
+                    obj = _getattr(obj, part)
+                obj[key.parts[-1]] = value
+            else:
+                obj[key] = value
+
         return undefined
 
 
@@ -399,3 +415,11 @@ class op(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])
+
+
+# TODO: Implement python-like getattr attribute lookup
+def _getattr(obj: Object, key: Object):
+    if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
+        return obj[key]
+    else:
+        raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
