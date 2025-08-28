@@ -47,3 +47,10 @@ class Path(Object):
         assert args.is_positional_only, "Path takes only positional arguments"
         assert len(args) > 1, "Path must have at least two parts"
         self.parts = tuple(args[:])
+
+
+class Dots(Object):
+    """Something like Python's ellipsis, but represents an arbitrary number of dots (1 or more)"""
+    def __init__(self, count: int):
+        assert count > 0, "Dots count must be positive"
+        self.count = count

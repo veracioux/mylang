@@ -13,7 +13,9 @@ BOOL: "true" | "false"
 NULL: "null"
 UNDEFINED: "undefined"
 UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z_][a-z0-9_]*/i
-SIGNED_NUMBER: _SIGNED_NUMBER
+SIGNED_NUMBER.1: _SIGNED_NUMBER
+_DOTS: /\.+/
+DOTS: _DOTS
 _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 
 
@@ -67,14 +69,21 @@ execution_block: "{" _WS* statement_list _WS* "}"
 dict.2: "(" _WS* [_explicit_args] _WS_INLINE* ")"
 array.1: "(" _WS* (expression _statement_separation)+ expression? ")"
 
+
 // Expression - any expression that can be evaluated to produce a value
-?expression: string
+
+_expression_not_path: string
            | primitive
            | dict
-           | ("(" expression ")")
            | execution_block
            | array
-           | ("(" _WS* statement_list _WS* ")")
            | _any_operation
+           | ("(" expression ")")
+           | ("(" _WS* statement_list _WS* ")")
+?expression: _expression_not_path
+           | path
+
+dots: DOTS
+path: (dots? (_expression_not_path _DOTS)+ _expression_not_path dots?)
 
 %ignore SH_COMMENT

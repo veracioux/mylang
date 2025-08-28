@@ -219,3 +219,64 @@ class TestStatementList:
         assert t.children[1].data == "args"
         assert t.children[1].children[0].value == "c"
         assert t.children[1].children[1].value == "d"
+
+
+class TestPath:
+    def test_parse_path_simple(self):
+        t = parser.parse("a.b.c", start="path")
+        assert t.data == "path"
+        assert len(t.children) == 3
+
+        assert t.children[0].type == "UNQUOTED_STRING"
+        assert t.children[0].value == "a"
+
+        assert t.children[1].type == "UNQUOTED_STRING"
+        assert t.children[1].value == "b"
+
+        assert t.children[2].type == "UNQUOTED_STRING"
+        assert t.children[2].value == "c"
+
+    def test_parse_path_mixed_expressions(self):
+        t = parser.parse('a.(-1.2).{x}.(1 a=2)', start="path")
+        assert t.pretty().strip() == """
+path
+  a
+  -1.2
+  execution_block
+    statement_list	x
+  dict
+    1
+    assignment
+      a
+      2
+""".strip()
+
+    def test_parse_path_leading_dot(self):
+        t = parser.parse(".a.b", start="path")
+        assert t.pretty().strip() == """
+path
+  dots\t.
+  a
+  b
+""".strip()
+
+    def test_parse_path_trailing_dot(self):
+        t = parser.parse("a.b.c.", start="path")
+        assert t.pretty().strip() == """
+path
+  a
+  b
+  c
+  dots\t.
+""".strip()
+
+    def test_parse_path_leading_trailing_dots(self):
+        t = parser.parse("...a.b.c....", start="path")
+        assert t.pretty().strip() == """
+path
+  dots\t...
+  a
+  b
+  c
+  dots\t....
+""".strip()
