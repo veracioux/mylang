@@ -116,3 +116,19 @@ x = 3
 after 3rd loop $x is 4
     """.strip()
     assert captured.err == ""
+
+
+def test_path_getset(capsys: CaptureFixture[str]):
+    execute_module("path_getset.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+$dict is ('a'=1, 'b'=('c'=3, 'd'=4))
+$dict.a is 1
+$dict.b is ('c'=3, 'd'=4)
+$dict.b.c is 3
+$dict.b.d is 4
+Setting dict.b.c to 5
+$dict.b.c is now 5
+    """.strip()
+    assert captured.err == ""

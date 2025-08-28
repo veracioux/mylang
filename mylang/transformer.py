@@ -14,6 +14,8 @@ from .stdlib.core import (
     BinaryOperation,
     PostfixOperation,
     PrefixOperation,
+    Dots,
+    Path,
 )
 
 __all__ = ("Transformer",)
@@ -80,6 +82,12 @@ class Transformer(_Transformer):
 
     def binary_operation(self, items: tuple[Tree, Object, Object]):
         return BinaryOperation(_operator_node_to_string(items[1]), [items[0], items[2]])
+
+    def dots(self, items: list[Token]):
+        return Dots(len(items[0].value))
+
+    def path(self, items: list[Object]):
+        return Path(Args(*items))
 
 
 def _operator_node_to_string(operator: Tree):

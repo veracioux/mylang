@@ -1,0 +1,12 @@
+dict = (a=1, b=(c=3, d=4))
+
+echo "$dict is" $dict
+echo "$dict.a is" $dict.a
+echo "$dict.b is" $dict.b
+echo "$dict.b.c is" $dict.b.c
+echo "$dict.b.d is" $dict.b.d
+
+echo "Setting dict.b.c to 5"
+dict.b.c = 5
+
+echo "$dict.b.c is now" $dict.b.c

@@ -236,6 +236,22 @@ class TestPath:
         assert t.children[2].type == "UNQUOTED_STRING"
         assert t.children[2].value == "c"
 
+    def test_parse_path_dot_string(self):
+        t = parser.parse('.a', start="path")
+        assert t.pretty().strip() == """
+path
+  dots\t.
+  a
+""".strip()
+
+    def test_parse_path_string_dot(self):
+        t = parser.parse('a.', start="path")
+        assert t.pretty().strip() == """
+path
+  a
+  dots\t.
+""".strip()
+
     def test_parse_path_mixed_expressions(self):
         t = parser.parse('a.(-1.2).{x}.(1 a=2)', start="path")
         assert t.pretty().strip() == """

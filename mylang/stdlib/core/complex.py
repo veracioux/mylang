@@ -48,9 +48,26 @@ class Path(Object):
         assert len(args) > 1, "Path must have at least two parts"
         self.parts = tuple(args[:])
 
+    @Special._m_repr_
+    def _m_repr_(self):
+        string = ".".join(str(getattr(part, Special._m_repr_.name)()) for part in self.parts)
+        slice_ = slice(
+            1 if isinstance(self.parts[0], Dots) else 0,
+            -1 if isinstance(self.parts[-1], Dots) else len(string),
+        )
+
+        return String(string[slice_])
+
 
 class Dots(Object):
     """Something like Python's ellipsis, but represents an arbitrary number of dots (1 or more)"""
     def __init__(self, count: int):
         assert count > 0, "Dots count must be positive"
         self.count = count
+
+    def __eq__(self, value: object, /):
+        return isinstance(value, Dots) and self.count == value.count
+
+    @Special._m_repr_
+    def _m_repr_(self):
+        return String("." * self.count)

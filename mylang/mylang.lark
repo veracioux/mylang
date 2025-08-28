@@ -83,7 +83,10 @@ _expression_not_path: string
 ?expression: _expression_not_path
            | path
 
+// TODO: Disallow unparenthesized floats
 dots: DOTS
 path: (dots? (_expression_not_path _DOTS)+ _expression_not_path dots?)
+    | (dots _expression_not_path)
+    | (_expression_not_path dots)
 
 %ignore SH_COMMENT

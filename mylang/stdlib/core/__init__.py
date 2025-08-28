@@ -10,7 +10,7 @@ from .primitive import (
     undefined,
     null,
 )
-from .complex import String, Path
+from .complex import String, Path, Dots
 from .base import (
     Object,
     Args,
@@ -37,6 +37,7 @@ __all__ = (
     "null",
     "String",
     "Path",
+    "Dots",
     "Object",
     "Args",
     "Dict",
