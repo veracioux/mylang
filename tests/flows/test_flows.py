@@ -132,3 +132,14 @@ Setting dict.b.c to 5
 $dict.b.c is now 5
     """.strip()
     assert captured.err == ""
+
+
+def test_class(capsys: CaptureFixture[str]):
+    execute_module("class.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+created class <class Animal>
+initializing Animal named animal
+    """.strip()
+    assert captured.err == ""

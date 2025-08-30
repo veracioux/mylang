@@ -23,6 +23,7 @@ from .base import (
 )
 from .func import fun, call, set_, get, use, ref, op
 from .flow import if_, return_, loop, while_, break_, continue_
+from .class_ import class_
 
 __all__ = (
     "Primitive",
@@ -55,6 +56,7 @@ __all__ = (
     "while_",
     "break_",
     "continue_",
+    "class_",
     "op",
     "Operation",
     "PrefixOperation",

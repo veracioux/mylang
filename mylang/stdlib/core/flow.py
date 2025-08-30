@@ -4,9 +4,10 @@ from typing import NamedTuple
 
 from .func import StatementList
 from ._utils import Special, expose, function_defined_as_class, FunctionAsClass
-from .base import class_, Object, Args
+from .base import Object, Args
 from .primitive import undefined
 from .complex import String
+from .class_ import class_
 
 
 class _Symbols:

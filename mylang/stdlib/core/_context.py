@@ -55,6 +55,9 @@ class LocalsDict:
     def dict(self):
         return {k.key: v for k, v in self._dict.items()}
 
+    def values(self):
+        return self._dict.values()
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LocalsDict):
             return self._dict == other._dict

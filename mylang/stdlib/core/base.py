@@ -15,6 +15,7 @@ T = TypeVar("T", bound="Object")
 
 if TYPE_CHECKING:
     from .complex import String
+    from .class_ import class_
 
 
 class Object:
@@ -204,15 +205,21 @@ class BinaryOperation(Operation):
         )
 
 
-# TODO: probably want class to be a typed object, but not sure how to do that
-# because of circular dependencies
-class class_(Object):
-    pass
-
-
 # TODO: Use later as base for bunch of classes
+# TODO: Maybe rename to ClassInstance
 class TypedObject(Object):
     """Same as :class:`Object` but read/assignment is validated against the class definition."""
+
+    def __init__(self, type_: "class_"):
+        self.type_ = type_
+        self._m_dict_ = {}
+        super().__init__(type_)
+
+    @Special._m_repr_
+    def _m_repr_(self):
+        # TODO: Improve
+        from .complex import String
+        return String(f"<{self.type_.name} instance at {hex(id(self))}>")
 
 
 class Array(Object, Generic[T]):

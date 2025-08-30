@@ -81,10 +81,12 @@ def python_obj_to_mylang(obj):
         return undefined
     elif isinstance(obj, FunctionType):
         return _python_func_to_mylang(obj)
+    elif isinstance(obj, MethodType):
+        return _python_func_to_mylang(obj)
     elif obj in all_functions_defined_as_classes:
         return obj
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"{python_obj_to_mylang.__name__} is not implemented for type {type(obj)}")
 
 
 def python_dict_from_args_kwargs(*args, **kwargs):
@@ -209,8 +211,18 @@ currently_called_func = ContextVar("currently_called_func", default=None)
 """Used by `only_callable_by_call_decorator` to ensure that a function can only
 be called from `call`."""
 
+
 _exposed_objects = set[int]()
 """Holds all objects that are exposed outside of Python, in the context of MyLang."""
+
+
+_exposed_class_attrs = set[tuple[type, str]]()
+"""Holds all (class, attr_name) pairs that are exposed to MyLang."""
+
+
+_exposed_obj_attrs = set[tuple[type, str]]()
+"""Holds (class, attr_name) pairs. Each pair means that the attribute named
+`attr_name` should be exposed to MyLang for instances of `class` and its subclasses."""
 
 
 TypeObject = TypeVar("TypeObject", bound="Object")
@@ -224,9 +236,32 @@ def expose(obj: TypeObject):
     return obj
 
 
+def expose_class_attr(attr_name: str):
+    """Decorator to expose a class attribute in the context of MyLang."""
+    def decorator(cls):
+        _exposed_class_attrs.add((cls, attr_name))
+        return cls
+
+    return decorator
+
+
 def is_exposed(obj: "Object"):
     """Check if the object is exposed outside of Python."""
     return id(obj) in _exposed_objects
+
+
+def is_attr_exposed(obj: "Object", attr_name: str):
+    """Check if the given attribute on obj is exposed outside of Python."""
+    if (obj, attr_name) in _exposed_obj_attrs:
+        return True
+
+    type_ = obj if isinstance(obj, type) else type(obj)
+
+    for type_ in type_.mro()[:-1]:  # exclude `object`
+        if (type_, attr_name) in _exposed_class_attrs:
+            return True
+
+    return False
 
 
 @contextmanager

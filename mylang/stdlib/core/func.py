@@ -13,18 +13,16 @@ from ._utils import (
     currently_called_func,
     expose,
     function_defined_as_class,
+    is_attr_exposed,
     python_dict_from_args_kwargs,
     set_contextvar,
     FunctionAsClass,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object
-from .complex import Path
+from .complex import Path, String
 
 __all__ = ("fun", "call", "get", "set_")
 
-
-if TYPE_CHECKING:
-    from .complex import String
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
 
@@ -38,7 +36,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         self.name: Object
         self.parameters: Dict
         self.body: StatementList
-        self._surrounding_lexical_scope: LexicalScope
+        self.closure_lexical_scope: LexicalScope
         """The lexical scope in which this function was defined."""
         super().__init__(name, *args, **kwargs)
 
@@ -58,7 +56,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
             )
             caller_stack_frame = cls._caller_stack_frame()
             caller_stack_frame.locals[func.name] = func
-            func._surrounding_lexical_scope = caller_stack_frame.lexical_scope
+            func.closure_lexical_scope = caller_stack_frame.lexical_scope
             return func
         else:
             assert False, (
@@ -118,7 +116,8 @@ class call(Object, FunctionAsClass):
         if isinstance(_ref := func_key, ref):
             obj_to_call = _ref.obj
         else:
-            obj_to_call = caller_stack_frame[func_key]
+            with set_contextvar(currently_called_func, get._m_classcall_):
+                obj_to_call = get._m_classcall_(Args(func_key))
 
         needs_new_stack_frame = True
 
@@ -146,7 +145,7 @@ class call(Object, FunctionAsClass):
         ):
             stack_frame = stack_frame or caller_stack_frame
             if isinstance(func := obj_to_call, fun):  # TODO: Generalize
-                stack_frame.set_parent_lexical_scope(func._surrounding_lexical_scope)
+                stack_frame.set_parent_lexical_scope(func.closure_lexical_scope)
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
             value = python_callable(fun_args)
             if obj_to_call is not cls:
@@ -421,5 +420,17 @@ class op(Object, FunctionAsClass):
 def _getattr(obj: Object, key: Object):
     if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
         return obj[key]
-    else:
-        raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
+    elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
+        # Try to access via _m_dict_ first
+        try:
+            m_dict = getattr(obj, Special._m_dict_.name())
+            return m_dict[key]
+        except:
+            # Try to access directly on Python object
+            if isinstance(key, String) and is_attr_exposed(obj, key.value):
+                try:
+                    return getattr(obj, key.value)
+                except:
+                    pass
+            assert False, f"Object {obj} has no attribute {key}"
+    raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
