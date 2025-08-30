@@ -77,7 +77,7 @@ class class_(Object, FunctionAsClass):
     @classmethod
     def init(cls, *args, **kwargs):
         args = Args(*args, **kwargs)
-        with current_stack_frame.get().parent as stack_frame:
+        with cls._caller_stack_frame() as stack_frame:
             created_class = stack_frame.lexical_scope.custom_data[
                 _Symbols.CURRENT_CLASS
             ]

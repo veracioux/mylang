@@ -150,18 +150,41 @@ class FunctionAsClass(abc.ABC):
 
     @classmethod
     def _caller_stack_frame(cls):
-        if cls._SHOULD_RECEIVE_NEW_STACK_FRAME:
-            raise RuntimeError(
-                " ".join(
-                    f"""
-                        If function {cls.__name__} wants access to the caller's stack frame,
-                        it should set its class attribute _SHOULD_RECEIVE_NEW_STACK_FRAME to False
-                    """.split()
-                )
-            )
+        """Get the stack frame of the caller of this function.
+
+        If _SHOULD_RECEIVE_NEW_STACK_FRAME is True, this will be the parent
+        of the current stack frame. If False, it will be the current stack frame.
+        """
         from ._context import current_stack_frame
 
-        return current_stack_frame.get()
+        this_stack_frame = current_stack_frame.get()
+        return (
+            this_stack_frame.parent
+            if cls._SHOULD_RECEIVE_NEW_STACK_FRAME
+            else this_stack_frame
+        )
+
+    @classmethod
+    def _caller_lexical_scope(cls):
+        """Get the lexical scope of the caller of this function.
+
+        Similar to `_caller_stack_frame`, if _SHOULD_RECEIVE_NEW_STACK_FRAME is
+        True, this will be the lexical scope of the current stack frame's
+        parent. If False, it will be the lexical scope of the current stack
+        frame.
+        """
+        return cls._caller_stack_frame().lexical_scope
+
+    @classmethod
+    def _caller_locals(cls):
+        """Get the locals of the caller of this function.
+
+        Similar to `_caller_stack_frame`, if _SHOULD_RECEIVE_NEW_STACK_FRAME is
+        True, this will be the lexical scope of the current stack frame's
+        parent. If False, it will be the lexical scope of the current stack
+        frame.
+        """
+        return cls._caller_stack_frame().locals
 
 
 def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun":

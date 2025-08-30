@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Any, Optional, Sequence, TypeVar, Union
 
-from mylang.stdlib.core._utils import python_obj_to_mylang
+from ._utils import python_obj_to_mylang
 from .base import Object
 from contextvars import ContextVar
 

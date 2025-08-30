@@ -10,6 +10,7 @@ __all__ = ('String', 'Path')
 
 
 class String(Object):
+    # TODO: Use weak caching
     @functools.cache
     def __new__(cls, *args, **kwargs):
         return super().__new__(cls)

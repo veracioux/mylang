@@ -142,7 +142,7 @@ class loop(Object, FunctionAsClass):
         copied_statement_list = StatementList.from_iterable(args[0])
         stack_frame = cls._caller_stack_frame()
         loop_data = _LoopData(copied_statement_list=copied_statement_list)
-        stack_frame.lexical_scope.custom_data[_Symbols.CURRENT_LOOP_DATA] = loop_data
+        cls._caller_lexical_scope().custom_data[_Symbols.CURRENT_LOOP_DATA] = loop_data
         # TODO: Consider adding some return value from the loop
         while True:
             # Execute statement list (it will abort something breaks or continues the loop)
@@ -168,8 +168,7 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
 
     @classmethod
     def _get_loop_data(cls) -> _LoopData:
-        stack_frame = cls._caller_stack_frame()
-        loop_data = stack_frame.lexical_scope.custom_data.get(
+        loop_data = cls._caller_lexical_scope().custom_data.get(
             _Symbols.CURRENT_LOOP_DATA, None
         )
         assert loop_data is not None, f"{getattr(cls, Special._m_name_.name)} statement not inside a loop"

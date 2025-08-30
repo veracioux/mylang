@@ -54,9 +54,8 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
             func.parameters = Args.from_dict(
                 dict(enumerate(args[1:-1])) | args.keyed_dict()
             )
-            caller_stack_frame = cls._caller_stack_frame()
-            caller_stack_frame.locals[func.name] = func
-            func.closure_lexical_scope = caller_stack_frame.lexical_scope
+            cls._caller_locals()[func.name] = func
+            func.closure_lexical_scope = cls._caller_lexical_scope()
             return func
         else:
             assert False, (
@@ -110,7 +109,7 @@ class call(Object, FunctionAsClass):
         func_key, rest = args[0], args[1:]
 
         # `call` is special, it operates in the caller's stack frame
-        caller_stack_frame = current_stack_frame.get()
+        caller_stack_frame = cls._caller_stack_frame()
 
         obj_to_call: Object
         if isinstance(_ref := func_key, ref):
@@ -191,7 +190,7 @@ class get(Object, FunctionAsClass):
 
         parts = args[0].parts if isinstance(args[0], Path) else (args[0],)
 
-        obj = cls._caller_stack_frame().lexical_scope
+        obj = cls._caller_lexical_scope()
 
         for part in parts:
             obj = _getattr(obj, part)
@@ -210,7 +209,7 @@ class set_(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         from .primitive import undefined
 
-        lexical_scope_locals = cls._caller_stack_frame().lexical_scope.locals
+        lexical_scope_locals = cls._caller_lexical_scope().locals
         for key, value in args._m_dict_.items():
             obj = lexical_scope_locals
             if isinstance(key, Path):
@@ -262,7 +261,7 @@ class use(Object, FunctionAsClass):
             # Return cached value if available
             exported_value = use.__cache[args[0].value]
 
-            cls._caller_stack_frame().locals[args[0]] = exported_value
+            cls._caller_locals()[args[0]] = exported_value
             return exported_value
 
         # TODO: Use a lookup strategy
@@ -290,7 +289,7 @@ class use(Object, FunctionAsClass):
                 # TODO: Use identity instead of hashing dict
                 exported_value = Dict.from_dict(stack_frame.locals.dict())
 
-        cls._caller_stack_frame().locals[args[0]] = exported_value
+        cls._caller_locals()[args[0]] = exported_value
 
         use.__cache[unique_id] = exported_value
 
