@@ -68,6 +68,10 @@ class LocalsDict:
 
 
 class LexicalScope:
+    """A linked list of local variable dictionaries.
+
+    It represents all the key-value pairs available in the current lexical scope.
+    """
     __slots__ = ("locals", "parent", "last_called_function", "custom_data")
 
     def __init__(
@@ -102,6 +106,14 @@ class LexicalScope:
         else:
             raise KeyError(f"Key {key!r} not found in lexical scope.")
 
+    def add_above(self, locals_: LocalsDict) -> "LexicalScope":
+        """Create a new lexical scope with the given locals and insert it above
+        this one."""
+        current_parent = self.parent
+        new_scope = LexicalScope(locals_, parent=current_parent)
+        self.parent = new_scope
+        return new_scope
+
 
 class StackFrame:
     __slots__ = (
@@ -134,6 +146,12 @@ class StackFrame:
     def set_parent_lexical_scope(self, parent: Optional[LexicalScope]):
         """Set the parent lexical scope of this stack frame's lexical scope."""
         self.lexical_scope.parent = parent
+
+    def inherit_parent_lexical_scope(self):
+        """Set the parent lexical scope to the lexical scope of its parent
+        stack frame."""
+        if self.parent is not None:
+            self.set_parent_lexical_scope(self.parent.lexical_scope)
 
     def __getitem__(self, key: Any) -> Object:
         return self.lexical_scope[key]

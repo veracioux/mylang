@@ -2,6 +2,7 @@ from typing import Any
 
 from mylang.stdlib.core.func import StatementList, fun
 from . import undefined
+from ._context import current_stack_frame, LocalsDict
 from ._utils import (
     FunctionAsClass,
     Special,
@@ -9,10 +10,11 @@ from ._utils import (
     expose_class_attr,
     function_defined_as_class,
     python_obj_to_mylang,
+    set_contextvar,
+    currently_called_func,
 )
-from .base import Args, Object, Dict, TypedObject
+from .base import Args, Object, TypedObject
 from .complex import String
-from ._context import current_stack_frame
 
 __all__ = ("class_",)
 
@@ -33,13 +35,13 @@ class class_(Object, FunctionAsClass):
         super().__init__(name, *rest)
         self.name = python_obj_to_mylang(name)
         self.bases = rest[:-1] or (Object,)
-        self.initializer = python_obj_to_mylang(
-            lambda: undefined
+        self.initializer: Method = python_obj_to_mylang(
+            lambda *args, **kwargs: undefined
         )  # TODO: determine default initializer
 
         # Execute the body in the caller's lexical scope
         stack_frame = current_stack_frame.get()
-        stack_frame.set_parent_lexical_scope(stack_frame.parent.lexical_scope)
+        stack_frame.inherit_parent_lexical_scope()
         body = rest[-1] if rest else StatementList()
         stack_frame.lexical_scope.custom_data[_Symbols.CURRENT_CLASS] = self
         body.execute()
@@ -48,7 +50,11 @@ class class_(Object, FunctionAsClass):
         stack_frame.parent.locals[self.name] = self
 
         locals_ = stack_frame.lexical_scope.locals
-        self.prototype = Dict.from_dict(locals_.dict())
+        # TODO: Make prototype a Dict
+        # TODO: Rename LocalsDict to IdentityDict
+        self.prototype = LocalsDict({
+            k: (Method(v) if isinstance(v, fun) else v) for k, v in locals_.dict().items()
+        })
 
     @classmethod
     @Special._m_classcall_
@@ -71,23 +77,59 @@ class class_(Object, FunctionAsClass):
         """Initialize an instance of the class."""
         # TODO: Define constructor and call it
         obj = TypedObject(self)
-        self.initializer(args)
+        self.initializer.bind(obj)(args)
         return obj
 
     @classmethod
-    def init(cls, *args, **kwargs):
-        args = Args(*args, **kwargs)
+    def init(cls, *mylang_args, **kwargs):
+        mylang_args = Args(*mylang_args, **kwargs)
         with cls._caller_stack_frame() as stack_frame:
-            created_class = stack_frame.lexical_scope.custom_data[
+            created_class: class_ = stack_frame.lexical_scope.custom_data[
                 _Symbols.CURRENT_CLASS
             ]
-            created_class.initializer = fun(Args(String("initializer")) + args)
+            created_class.initializer = Method(fun(String("initializer"), mylang_args))
 
     def _m_repr_(self):
         return String(f"<class {self.name}>")
 
 
 class_.init = python_obj_to_mylang(class_.init)
+
+
+class Method(Object):
+    """A function defined in a class's initialization block, that is not bound
+    to any object."""
+    def __init__(self, func: fun):
+        self.func = func
+        super().__init__(func)
+
+    def bind(self, bound_to: Object) -> "BoundMethod":
+        return BoundMethod(bound_to, self.func)
+
+
+class BoundMethod(fun):
+    def __init__(self, bound_to: Object, func: fun, /):
+        assert isinstance(bound_to, Object), f"{BoundMethod} first argument must be an Object"
+        assert isinstance(func, fun), f"{BoundMethod} second argument must be a function"
+        self.self = bound_to
+        self.func = func
+        super().__init__(func.name, func.parameters, func.body)
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /) -> Any:
+        bound_to = args[0]
+        func = args[1]
+        obj = Object.__new__(cls)
+        obj.__init__(bound_to, func)
+        return obj
+
+    @Special._m_call_
+    def _m_call_(self, args: Args, /) -> Any:
+        # Inject `self` into the function's lexical scope
+        current_stack_frame.get().locals["self"] = self.self
+        with set_contextvar(currently_called_func, self.func._m_call_):
+            return self.func._m_call_(args)
 
 
 class Doc(Object):

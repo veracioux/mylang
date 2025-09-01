@@ -3,12 +3,12 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING, Any, TypeVar
-
+from typing import TYPE_CHECKING, Any, TypeVar, Generic
 
 if TYPE_CHECKING:
-    from .base import Object, Args
+    from .base import Object, Args, Dict
     from .func import fun
+    from ._context import LocalsDict
 
 
 T = TypeVar("T")
@@ -51,6 +51,7 @@ class Special:
     _m_setattr_ = _SpecialAttrDescriptor()
     _m_call_ = _SpecialAttrDescriptor()
     _m_classcall_ = _SpecialAttrDescriptor()
+    _m_lexical_scope_ = _SpecialAttrDescriptor()
 
 
 def python_obj_to_mylang(obj):
@@ -120,7 +121,7 @@ def mylang_obj_to_python(obj: "Object"):
         else:
             return obj
     else:
-        raise NotImplementedError
+        return obj
 
 
 TypeFunc = TypeVar("TypeFunc", bound=FunctionType)
@@ -129,13 +130,26 @@ TypeFunc = TypeVar("TypeFunc", bound=FunctionType)
 all_functions_defined_as_classes: set[type] = set()
 
 
-class FunctionAsClass(abc.ABC):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = True
-    """Indicates that the function should receive a nested stack frame.
+TypeReturn = TypeVar("TypeReturn", bound="Object")
+
+
+class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+    """Indicates that `_m_classcall_` should receive a nested stack frame.
 
     Cautiously override this attribute. It is intended for control flow
     functions that need direct access to the caller's stack frame.
     """
+    _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+    """Indicates that `_m_call_` should receive a nested stack frame.
+
+    Cautiously override this attribute. It is intended for control flow
+    functions that need direct access to the caller's stack frame.
+    """
+
+    def __call__(self, *args, **kwargs) -> TypeReturn:
+        from .func import call, ref
+        return call(ref.of(self), *args, **kwargs)
 
     @classmethod
     @abc.abstractmethod
@@ -143,7 +157,8 @@ class FunctionAsClass(abc.ABC):
     def _m_classcall_(cls, args: "Args", /) -> "Object":
         """Called by the `call` function.
 
-        The `call` function is responsible for providing a fresh `StackFrame` to this function.
+        The `call` function is responsible for providing a fresh `StackFrame`
+        to this function.
 
         DO NOT CALL THIS DIRECTLY.
         """
@@ -152,15 +167,16 @@ class FunctionAsClass(abc.ABC):
     def _caller_stack_frame(cls):
         """Get the stack frame of the caller of this function.
 
-        If _SHOULD_RECEIVE_NEW_STACK_FRAME is True, this will be the parent
-        of the current stack frame. If False, it will be the current stack frame.
+        If _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is True, this will be the
+        parent of the current stack frame. If False, it will be the current
+        stack frame.
         """
         from ._context import current_stack_frame
 
         this_stack_frame = current_stack_frame.get()
         return (
             this_stack_frame.parent
-            if cls._SHOULD_RECEIVE_NEW_STACK_FRAME
+            if cls.__should_receive_new_stack_frame()
             else this_stack_frame
         )
 
@@ -168,10 +184,10 @@ class FunctionAsClass(abc.ABC):
     def _caller_lexical_scope(cls):
         """Get the lexical scope of the caller of this function.
 
-        Similar to `_caller_stack_frame`, if _SHOULD_RECEIVE_NEW_STACK_FRAME is
-        True, this will be the lexical scope of the current stack frame's
-        parent. If False, it will be the lexical scope of the current stack
-        frame.
+        Similar to `_caller_stack_frame`, if
+        `_CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME` is True, this will be the
+        lexical scope of the current stack frame's parent. If False, it will be
+        the lexical scope of the current stack frame.
         """
         return cls._caller_stack_frame().lexical_scope
 
@@ -179,12 +195,25 @@ class FunctionAsClass(abc.ABC):
     def _caller_locals(cls):
         """Get the locals of the caller of this function.
 
-        Similar to `_caller_stack_frame`, if _SHOULD_RECEIVE_NEW_STACK_FRAME is
-        True, this will be the lexical scope of the current stack frame's
-        parent. If False, it will be the lexical scope of the current stack
-        frame.
+        Similar to `_caller_stack_frame`, if
+        `_CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME` is True, this will be the
+        lexical scope of the current stack frame's parent. If False, it will be
+        the lexical scope of the current stack frame.
         """
         return cls._caller_stack_frame().locals
+
+    @classmethod
+    def __should_receive_new_stack_frame(cls):
+        from .func import call
+        current_func = currently_called_func.get()
+        if cls is call:  # `call` is a special case: it doesn't get currently_called_func set
+            return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+        if current_func.__name__ == Special._m_classcall_.name:
+            return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+        elif current_func.__name__ == Special._m_call_.name:
+            return cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+        else:
+            raise NotImplementedError
 
 
 def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun":
@@ -334,3 +363,19 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
     __func.__name__ = func.__name__
 
     return __func
+
+
+def populate_locals_for_callable(
+    locals_: "LocalsDict",
+    parameters: "Args",
+    args: "Args",
+):
+    """Populate a locals dictionary for a callable by mapping the arguments `args` to the callable's `parameters`."""
+    for i, posarg in enumerate(parameters[:]):
+        locals_[posarg] = args[i]
+    keyed_parameters = parameters.keyed_dict()
+    keyed_args = args.keyed_dict()
+    for key, default_value in keyed_parameters.items():
+        locals_[key] = keyed_args.get(key, default_value)
+
+    return locals_

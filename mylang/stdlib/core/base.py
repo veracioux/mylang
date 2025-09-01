@@ -24,11 +24,18 @@ class Object:
 
     def __init__(self, *args: "Object", **kwargs: "Object"):
         if any(isinstance(arg, Args) for arg in args):
-            if len(args) > 1:
-                raise ValueError(
-                    "If an argument of type Args is used, it must be the only argument."
-                )
-            self._m_init_(args[0])
+            positional = []
+            keyed = {}
+            for arg in args:
+                if isinstance(arg, Args):
+                    positional += arg[:]
+                    keyed |= arg.keyed_dict()
+                else:
+                    positional.append(arg)
+
+            keyed |= kwargs
+
+            self._m_init_(Args.from_dict(dict(enumerate(positional)) | keyed))
         else:
             self._m_init_(Args.from_dict(python_dict_from_args_kwargs(*args, **kwargs)))
 
@@ -227,10 +234,8 @@ class Array(Object, Generic[T]):
 
     @Special._m_init_
     def _m_init_(self, args: "Args", /):
-        from .primitive import Int
-
         super()._m_init_(args)
-        assert all(isinstance(k, Int) for k in args)
+        assert args.is_positional_only()
         self._m_array_: list[Object] = list(args._m_dict_.values())
 
     # TODO: Rename to from_iterable
@@ -452,7 +457,9 @@ class Args(Dict):
 
     def is_positional_only(self) -> bool:
         """Check if the Args contains only positional arguments."""
-        return len(self) == len(self[:])
+        # TODO: Use different logic
+        from .primitive import Int
+        return all(isinstance(k, Int) for k in self._m_dict_)
 
     def is_keyed_only(self) -> bool:
         """Check if the Args contains only keyed arguments."""

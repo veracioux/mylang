@@ -1,12 +1,13 @@
 import pytest
 
 from mylang.stdlib.core import ref, return_
-from mylang.stdlib.core._context import StackFrame, current_stack_frame
+from mylang.stdlib.core._context import LocalsDict, StackFrame, current_stack_frame
 from mylang.stdlib.core._utils import (
     Special,
     function_defined_as_class,
     currently_called_func,
     FunctionAsClass,
+    populate_locals_for_callable,
 )
 from mylang.stdlib.core.base import Args, Array, Dict, Object
 from mylang.stdlib.core.complex import Path, String
@@ -92,7 +93,7 @@ class TestArray:
 class Test_fun:
     def test_construct(self):
         f = fun(
-            Args("test", "x", StatementList(Args("call", "something")), a="A", b="B")
+            "test", Args("x", StatementList(Args("call", "something")), a="A", b="B")
         )
         assert f.name == String("test")
         assert f.parameters == Args.from_dict({0: "x", "a": "A", "b": "B"})
@@ -212,25 +213,25 @@ class Test_call:
         )
         self.assert_result_correct(result)
 
-    def test_create_locals_for_callable_positional_args(self):
-        # Create a dummy callable with parameters
-        dummy_func = fun("dummy", "x", "y", StatementList())
+
+class Test_utils:
+    def test_populate_locals_for_callable_positional_args(self):
+        locals_ = LocalsDict({})
 
         # Call the method
-        locals_ = call._create_locals_for_callable(
-            dummy_func, Args("X", "Y"),
+        populate_locals_for_callable(
+            locals_, Args("x", "y"), Args("X", "Y"),
         )
 
         # Check that positional arguments are mapped correctly
         assert locals_ == {String("x"): String("X"), String("y"): String("Y")}
 
-    def test_create_locals_for_callable_keyword_args(self):
-        # Create a dummy callable with parameters
-        dummy_func = fun("dummy", StatementList(), first="default_1st", second="default_2nd")
+    def test_populate_locals_for_callable_keyword_args(self):
+        locals_ = LocalsDict({})
 
         # Call the method with keyword arguments
-        locals_ = call._create_locals_for_callable(
-            dummy_func, Args(first="foo")
+        populate_locals_for_callable(
+            locals_, Args(first="default_1st", second="default_2nd"), Args(first="foo")
         )
 
         # Check that keyword arguments are mapped correctly
@@ -239,13 +240,12 @@ class Test_call:
             String("second"): String("default_2nd")
         }
 
-    def test_create_locals_for_callable_mixed_args(self):
-        # Create a dummy callable with parameters
-        dummy_func = fun("dummy", "x", "y", StatementList(), third="default_3rd", fourth="default_4th")
+    def test_populate_locals_for_callable_mixed_args(self):
+        locals_ = LocalsDict({})
 
         # Call the method with mixed arguments
-        locals_ = call._create_locals_for_callable(
-            dummy_func, Args("X", "Y", fourth="foo")
+        locals_ = populate_locals_for_callable(
+            locals_, Args("x", "y", third="default_3rd", fourth="default_4th"), Args("X", "Y", fourth="foo")
         )
 
         # Check that mixed arguments are mapped correctly
@@ -256,13 +256,12 @@ class Test_call:
             String("fourth"): String("foo")
         }
 
-    def test_create_locals_for_callable_no_parameters(self):
-        # Create a dummy callable without parameters
-        dummy_func = fun("dummy", StatementList())
+    def test_populate_locals_for_callable_no_parameters(self):
+        locals_ = LocalsDict({})
 
         # Call the method without parameters
-        locals_ = call._create_locals_for_callable(
-            dummy_func, Args()
+        populate_locals_for_callable(
+            locals_, Args(), Args()
         )
 
         # Check that an empty context dict is returned

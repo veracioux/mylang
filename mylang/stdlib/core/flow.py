@@ -26,7 +26,7 @@ class _LoopData:
 @function_defined_as_class
 class if_(Object, FunctionAsClass):
     _m_name_ = Special._m_name_("if")
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     class __IfBlockData(NamedTuple):
         modified_statement_list: StatementList
@@ -92,7 +92,7 @@ class if_(Object, FunctionAsClass):
 
     @function_defined_as_class
     class __Else(FunctionAsClass):
-        _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+        _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
         @classmethod
         @Special._m_classcall_
@@ -108,7 +108,7 @@ class if_(Object, FunctionAsClass):
 @function_defined_as_class
 class return_(Object, FunctionAsClass):
     _m_name_ = Special._m_name_("return")
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -129,7 +129,7 @@ class loop(Object, FunctionAsClass):
     """Loop forever, until a `break` statement is encountered, or a `while`
     condition is no longer true."""
 
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -158,7 +158,7 @@ class loop(Object, FunctionAsClass):
 
 
 class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -199,7 +199,7 @@ class break_(_LoopControlFunction):
     """Break out of a loop."""
 
     _m_name_ = Special._m_name_("break")
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -216,7 +216,7 @@ class break_(_LoopControlFunction):
 @function_defined_as_class
 class continue_(_LoopControlFunction):
     _m_name_ = Special._m_name_("continue")
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -235,7 +235,7 @@ class continue_(_LoopControlFunction):
 class ignore(Object, FunctionAsClass):
     """Do nothing. Ignores all its arguments."""
 
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_

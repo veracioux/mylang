@@ -1,5 +1,5 @@
 import contextlib
-from typing import TYPE_CHECKING, Generic, TypeVar, final
+from typing import Generic, TypeVar, final
 
 from ._context import (
     LocalsDict,
@@ -15,10 +15,11 @@ from ._utils import (
     function_defined_as_class,
     is_attr_exposed,
     python_dict_from_args_kwargs,
+    python_obj_to_mylang,
     set_contextvar,
-    FunctionAsClass,
+    FunctionAsClass, populate_locals_for_callable,
 )
-from .base import Args, Array, Dict, IncompleteExpression, Object
+from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
 
 __all__ = ("fun", "call", "get", "set_")
@@ -30,50 +31,54 @@ TypeReturn = TypeVar("TypeReturn", bound=Object)
 @expose
 @function_defined_as_class
 class fun(Object, FunctionAsClass, Generic[TypeReturn]):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
-    def __init__(self, name: Object, /, *args, **kwargs):
-        self.name: Object
-        self.parameters: Dict
-        self.body: StatementList
-        self.closure_lexical_scope: LexicalScope
+    def __init__(self, name: Object, /, *parameters_and_body: Object, **kwargs):
+        # When somebody constructs fun(...), Python will run __init__ automatically. Since we already called it from
+        # _m_classcall_, another call should do nothing
+        if currently_called_func.get() is None:
+            return
+
+        parameters_and_body = parameters_and_body if isinstance(parameters_and_body, Args) else Args(*parameters_and_body)
+        parameters = Args(*parameters_and_body[:-1]) + Args.from_dict(parameters_and_body.keyed_dict()) + Args(**kwargs)
+        body = parameters_and_body[-1]
+        assert isinstance(body, StatementList), "Body must be a StatementList"
+        self.name = python_obj_to_mylang(name)
+        self.parameters = parameters
+        self.body = body
+        self.closure_lexical_scope = self.__class__._caller_lexical_scope()
         """The lexical scope in which this function was defined."""
-        super().__init__(name, *args, **kwargs)
+        self.__class__._caller_locals()[name] = self
 
     @classmethod
     @Special._m_classcall_
     def _m_classcall_(cls, args: "Args", /):
         # TODO: Args must have unique names
         func = super().__new__(cls)
-        last_positional_index = args.get_last_positional_index()
-        if last_positional_index is not None and last_positional_index >= 1:
-            func.body = args[last_positional_index]
-            assert isinstance(func.body, StatementList), "Body must be a StatementList"
-            if last_positional_index >= 1:
-                func.name = args[0]
-            func.parameters = Args.from_dict(
-                dict(enumerate(args[1:-1])) | args.keyed_dict()
-            )
-            cls._caller_locals()[func.name] = func
-            func.closure_lexical_scope = cls._caller_lexical_scope()
-            return func
-        else:
-            assert False, (
-                "Function requires at least two positional arguments - name and body"
-            )
-
-    def __call__(self, *args, **kwargs) -> TypeReturn:
-        return call(ref.of(self), *args, **kwargs)
+        func.__init__(
+            args[0],
+            Args(*args[1:]) + Args.from_dict(args.keyed_dict()),
+        )
+        return func
 
     @Special._m_call_
-    def _m_call_(self, _: Args, /) -> TypeReturn:
+    def _m_call_(self, args: Args, /) -> TypeReturn:
+        stack_frame = current_stack_frame.get()
+        stack_frame.set_parent_lexical_scope(self.closure_lexical_scope)
+        populate_locals_for_callable(stack_frame.locals, self.parameters, args)
         return self.body.execute()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.name!r})"
+
+    @Special._m_repr_
+    def _m_repr_(self):
+        return String(f"fun {self.name!r}")
 
 @expose
 @function_defined_as_class(monkeypatch_methods=False)
 class call(Object, FunctionAsClass):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     def __new__(cls, func_key, *args, **kwargs):
         with (
@@ -123,28 +128,19 @@ class call(Object, FunctionAsClass):
         if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
             # Function defined as class
             python_callable = obj_to_call._m_classcall_
-            needs_new_stack_frame = obj_to_call._SHOULD_RECEIVE_NEW_STACK_FRAME
+            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
         else:
             # Regular MyLang callable
             python_callable = obj_to_call._m_call_
 
-        # Locals of the called function
-        _locals = cls._create_locals_for_callable(
-            obj_to_call,
-            Args(*rest),
-        )
-
         with (
             set_contextvar(currently_called_func, python_callable),
             (
-                nested_stack_frame(_locals)
+                nested_stack_frame()
                 if needs_new_stack_frame
                 else contextlib.nullcontext()
-            ) as stack_frame,
+            ),
         ):
-            stack_frame = stack_frame or caller_stack_frame
-            if isinstance(func := obj_to_call, fun):  # TODO: Generalize
-                stack_frame.set_parent_lexical_scope(func.closure_lexical_scope)
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
             value = python_callable(fun_args)
             if obj_to_call is not cls:
@@ -152,33 +148,10 @@ class call(Object, FunctionAsClass):
             return value
 
 
-    @classmethod
-    def _create_locals_for_callable(
-        cls,
-        callable: Object,
-        args: Args,
-    ):
-        """Create a locals dictionary for `callable` that maps the arguments `args` to the callable's parameters."""
-        # TODO: If it is a function implemented in Python, it won't need the bindings to be available in the context,
-        #       as it will be able to access the `args` object directly
-        locals_ = LocalsDict()
-
-        # TODO: De-hardcode this
-        if hasattr(callable, "parameters"):
-            for i, posarg in enumerate(callable.parameters[:]):
-                locals_[posarg] = args[i]
-            keyed_parameters = callable.parameters.keyed_dict()
-            keyed_args = args.keyed_dict()
-            for key, default_value in keyed_parameters.items():
-                locals_[key] = keyed_args.get(key, default_value)
-
-        return locals_
-
-
 @expose
 @function_defined_as_class
 class get(Object, FunctionAsClass):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
     @Special._m_classcall_
@@ -201,7 +174,7 @@ class get(Object, FunctionAsClass):
 @expose
 @function_defined_as_class
 class set_(Object, FunctionAsClass):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
     _m_name_ = Special._m_name_("set")
 
     @classmethod
@@ -215,7 +188,10 @@ class set_(Object, FunctionAsClass):
             if isinstance(key, Path):
                 for part in key.parts[:-1]:
                     obj = _getattr(obj, part)
-                obj[key.parts[-1]] = value
+                if isinstance(obj, TypedObject):
+                    obj._m_dict_[key] = value
+                else:
+                    obj[key.parts[-1]] = value
             else:
                 obj[key] = value
 
@@ -226,7 +202,7 @@ class set_(Object, FunctionAsClass):
 @function_defined_as_class
 class use(Object, FunctionAsClass):
     """Use code from another file."""
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     __cache: dict[str, Object] = {}
 
@@ -359,7 +335,7 @@ class ExecutionBlock(StatementList, IncompleteExpression):
 @function_defined_as_class
 @final
 class ref(Object, FunctionAsClass):
-    _SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     def __init__(self, key: Object):
         # FIXME: For some reason `ref 1` doesn't throw, even though I didn't
@@ -422,9 +398,20 @@ def _getattr(obj: Object, key: Object):
     elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
         # Try to access via _m_dict_ first
         try:
-            m_dict = getattr(obj, Special._m_dict_.name())
+            m_dict = getattr(obj, Special._m_dict_.name)
             return m_dict[key]
         except:
+            # Try to access on class prototype if applicable
+            if isinstance(obj, TypedObject):
+                from .class_ import Method
+                try:
+                    value = obj.type_.prototype[key]
+                    if isinstance(value, Method):
+                        return value.bind(obj)
+                    else:
+                        return value
+                except:
+                    pass
             # Try to access directly on Python object
             if isinstance(key, String) and is_attr_exposed(obj, key.value):
                 try:
