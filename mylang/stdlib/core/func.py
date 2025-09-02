@@ -188,12 +188,14 @@ class set_(Object, FunctionAsClass):
             if isinstance(key, Path):
                 for part in key.parts[:-1]:
                     obj = _getattr(obj, part)
-                if isinstance(obj, TypedObject):
-                    obj._m_dict_[key] = value
-                else:
-                    obj[key.parts[-1]] = value
+                last_key = key.parts[-1]
             else:
-                obj[key] = value
+                last_key = key
+
+            if isinstance(obj, TypedObject):
+                obj._m_dict_[last_key] = value
+            else:
+                obj[last_key] = value
 
         return undefined
 

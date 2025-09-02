@@ -141,5 +141,6 @@ def test_class(capsys: CaptureFixture[str]):
     assert captured.out.strip() == """
 created class <class Animal>
 initializing Animal named animal
+animal makes a sound
     """.strip()
     assert captured.err == ""
