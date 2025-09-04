@@ -1,0 +1,17 @@
+class Animal (
+    name = "Unnamed"
+    class.init name (
+        self.name = $name
+        echo initializing Animal named $name
+    )
+
+    fun speak (
+        echo $self.name "makes a sound"
+    )
+)
+
+echo "created class" $Animal
+
+animal = {Animal "animal"}
+
+animal.speak
