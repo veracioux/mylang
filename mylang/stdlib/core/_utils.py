@@ -379,3 +379,38 @@ def populate_locals_for_callable(
         locals_[key] = keyed_args.get(key, default_value)
 
     return locals_
+
+
+# TODO: Implement python-like getattr attribute lookup
+def getattr_(obj: "Object", key: "Object"):
+    from ._context import LexicalScope, LocalsDict
+    from .base import TypedObject, Dict, Object
+    from .complex import String
+
+    if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
+        return obj[key]
+    elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
+        # Try to access via _m_dict_ first
+        try:
+            m_dict = getattr(obj, Special._m_dict_.name)
+            return m_dict[key]
+        except:
+            # Try to access on class prototype if applicable
+            if isinstance(obj, TypedObject):
+                from .class_ import Method
+                try:
+                    value = obj.type_.prototype[key]
+                    if isinstance(value, Method):
+                        return value.bind(obj)
+                    else:
+                        return value
+                except:
+                    pass
+            # Try to access directly on Python object
+            if isinstance(key, String) and is_attr_exposed(obj, key.value):
+                try:
+                    return getattr(obj, key.value)
+                except:
+                    pass
+            assert False, f"Object {obj} has no attribute {key}"
+    raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")

@@ -13,6 +13,7 @@ from ._utils import (
     currently_called_func,
     expose,
     function_defined_as_class,
+    getattr_,
     is_attr_exposed,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
@@ -166,7 +167,7 @@ class get(Object, FunctionAsClass):
         obj = cls._caller_lexical_scope()
 
         for part in parts:
-            obj = _getattr(obj, part)
+            obj = getattr_(obj, part)
 
         return obj
 
@@ -187,7 +188,7 @@ class set_(Object, FunctionAsClass):
             obj = lexical_scope_locals
             if isinstance(key, Path):
                 for part in key.parts[:-1]:
-                    obj = _getattr(obj, part)
+                    obj = getattr_(obj, part)
                 last_key = key.parts[-1]
             else:
                 last_key = key
@@ -391,34 +392,3 @@ class op(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])
-
-
-# TODO: Implement python-like getattr attribute lookup
-def _getattr(obj: Object, key: Object):
-    if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
-        return obj[key]
-    elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
-        # Try to access via _m_dict_ first
-        try:
-            m_dict = getattr(obj, Special._m_dict_.name)
-            return m_dict[key]
-        except:
-            # Try to access on class prototype if applicable
-            if isinstance(obj, TypedObject):
-                from .class_ import Method
-                try:
-                    value = obj.type_.prototype[key]
-                    if isinstance(value, Method):
-                        return value.bind(obj)
-                    else:
-                        return value
-                except:
-                    pass
-            # Try to access directly on Python object
-            if isinstance(key, String) and is_attr_exposed(obj, key.value):
-                try:
-                    return getattr(obj, key.value)
-                except:
-                    pass
-            assert False, f"Object {obj} has no attribute {key}"
-    raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
