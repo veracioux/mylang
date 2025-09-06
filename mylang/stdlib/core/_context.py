@@ -72,7 +72,7 @@ class LexicalScope:
 
     It represents all the key-value pairs available in the current lexical scope.
     """
-    __slots__ = ("locals", "parent", "last_called_function", "custom_data")
+    __slots__ = ("locals", "parent", "custom_data")
 
     def __init__(
         self,
@@ -81,14 +81,6 @@ class LexicalScope:
     ):
         self.locals = locals_
         self.parent = parent
-        # TODO: Instead of an object reference, consider using some sort of
-        # `ref`-related mechanism that respects advice.
-        self.last_called_function: Optional[Object] = None
-        """The last function called in this lexical scope, if any.
-
-        Useful for control flow statements, e.g. `else` to check if it follows
-        an `if`.
-        """
 
         # TODO: Move to StackFrame
         self.custom_data = {}

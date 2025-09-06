@@ -144,8 +144,6 @@ class call(Object, FunctionAsClass):
         ):
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
             value = python_callable(fun_args)
-            if obj_to_call is not cls:
-                caller_stack_frame.lexical_scope.last_called_function = obj_to_call
             return value
 
 
