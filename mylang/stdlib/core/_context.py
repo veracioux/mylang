@@ -1,9 +1,14 @@
 from contextlib import contextmanager
-from typing import Any, Optional, Sequence, TypeVar, Union
+import dataclasses
+from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union
 
 from ._utils import python_obj_to_mylang
 from .base import Object
 from contextvars import ContextVar
+
+
+if TYPE_CHECKING:
+    from .func import StatementList
 
 
 TypeIdentityDictKey = TypeVar("TypeIdentityDictKey", bound=Object)
@@ -107,6 +112,12 @@ class LexicalScope:
         return new_scope
 
 
+@dataclasses.dataclass
+class CatchSpec:
+    error_key: Optional[Object]
+    body: "StatementList"
+
+
 class StackFrame:
     __slots__ = (
         "locals",
@@ -114,6 +125,7 @@ class StackFrame:
         "lexical_scope",
         "return_value",
         "depth",
+        "catch_spec",
         "_reset_token",
     )
 
@@ -132,6 +144,7 @@ class StackFrame:
         )
         self.return_value: Optional[Object] = None
         self.depth = self.parent.depth + 1 if self.parent is not None else 0
+        self.catch_spec: Optional[CatchSpec] = None
         self._reset_token = None
         """The reset token for the context variable."""
 

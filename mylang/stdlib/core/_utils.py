@@ -3,12 +3,12 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING, Any, TypeVar, Generic
+from typing import TYPE_CHECKING, Any, TypeVar, Generic, Union
 
 if TYPE_CHECKING:
-    from .base import Object, Args, Dict
-    from .func import fun
+    from .base import Object, Args
     from ._context import LocalsDict
+    from .class_ import class_
 
 
 T = TypeVar("T")
@@ -50,6 +50,14 @@ class Special:
     _m_repr_ = _SpecialAttrDescriptor()
     _m_setattr_ = _SpecialAttrDescriptor()
     _m_call_ = _SpecialAttrDescriptor()
+    """Called when the instance is called by the `call` function.
+    The `call` function takes care of setting up the local context before it makes this call.
+    Parameters
+        args : `Args`
+            The arguments this function was called with. The implementation of `_m_call_` may use these
+            arguments directly, or it can obtain them from the local context, where those arguments are mapped
+            to local keys based on the args and the callable (self)'s parameter signature.
+    """
     _m_classcall_ = _SpecialAttrDescriptor()
     _m_lexical_scope_ = _SpecialAttrDescriptor()
 
@@ -59,6 +67,8 @@ def python_obj_to_mylang(obj):
     from .base import Object
 
     if isinstance(obj, Object):
+        return obj
+    elif isinstance(obj, type) and issubclass(obj, Object):
         return obj
     elif isinstance(obj, str):
         from .complex import String
@@ -216,7 +226,7 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
             raise NotImplementedError
 
 
-def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun":
+def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
     def decorator(cls: FunctionAsClass):
         assert isinstance(cls, type) and issubclass(cls, FunctionAsClass), (
             f"Class {cls.__name__} should be a subclass of FunctionAsClass"
@@ -235,7 +245,9 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True) -> "fun"
         )
 
         if monkeypatch_methods:
-            cls._m_classcall_ = Special._m_classcall_(only_callable_by_call_decorator(cls._m_classcall_))
+            cls._m_classcall_ = classmethod(
+                only_callable_by_call_decorator(cls._m_classcall_.__func__),
+            )
             if hasattr(cls, Special._m_call_.name):
                 cls._m_call_ = Special._m_call_(only_callable_by_call_decorator(cls._m_call_))
 
@@ -347,7 +359,7 @@ def only_callable_by_call_decorator(func):
 def _python_func_to_mylang(func: FunctionType) -> "Object":
     """Convert a Python function to a MyLang function."""
     from .base import Object, Args
-    from .func import FunctionAsClass
+    from .func import StatementList
 
     @function_defined_as_class
     class __func(Object, FunctionAsClass):
@@ -360,7 +372,12 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
             """Call the function with the given arguments."""
             return func(*args[:], **args.keyed_dict())
 
+    # TODO: Set correct values
+    __func.parameters = Args()
+    __func.body = StatementList()
+
     __func.__name__ = func.__name__
+    __func.__qualname__ = func.__qualname__
 
     return __func
 
@@ -414,3 +431,37 @@ def getattr_(obj: "Object", key: "Object"):
                     pass
             assert False, f"Object {obj} has no attribute {key}"
     raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
+
+
+def isinstance_(obj: "Object", type_: type):
+    """Instance check in the context of MyLang."""
+    from .base import TypedObject
+    from .func import fun
+    if isinstance(obj, TypedObject):
+        return issubclass_(obj.type_, type_)
+    elif isinstance(obj, type_):
+        return True
+    elif isinstance(obj, type) and issubclass(obj, FunctionAsClass) and type_ is fun:
+        return True
+    else:
+        return False
+
+
+def issubclass_(obj: "Object", type_: Union[type, "class_"]):
+    """Subclass check in the context of MyLang."""
+    from .class_ import class_
+    from .base import Object
+
+    if type_ is Object:
+        return True
+
+    if isinstance(obj, type) and isinstance(type_, type) and issubclass(obj, type_):
+        return True
+    elif isinstance(obj, class_):
+        if obj is type_:
+            return True
+        if obj.bases == (Object,):
+            return False
+        return any(issubclass_(base, type_) for base in obj.bases)
+    else:
+        return False

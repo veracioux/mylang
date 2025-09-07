@@ -144,3 +144,15 @@ initializing Animal named animal
 animal makes a sound
     """.strip()
     assert captured.err == ""
+
+
+def test_errors(capsys: CaptureFixture[str]):
+    execute_module("errors.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+Caught error of type Error with message:  .
+Caught error of type Error with message err msg
+Caught error of type MyError with message my error
+    """.strip()
+    assert captured.err == ""

@@ -15,5 +15,5 @@ class echo(Object, FunctionAsClass):
     @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         """Prints the input value to stdout."""
-        print(*(str(arg) for arg in args[:]))
+        print(*(str(arg._m_str_() if hasattr(arg, Special._m_str_.name) else str(arg)) for arg in args[:]))
         return undefined

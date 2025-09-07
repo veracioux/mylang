@@ -1,7 +1,10 @@
 import contextlib
-from typing import Generic, TypeVar, final
+from typing import Generic, Optional, TypeVar, final
+
+from .error import Error, ErrorCarrier
 
 from ._context import (
+    CatchSpec,
     LocalsDict,
     current_stack_frame,
     nested_stack_frame,
@@ -15,6 +18,7 @@ from ._utils import (
     function_defined_as_class,
     getattr_,
     is_attr_exposed,
+    isinstance_,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
     set_contextvar,
@@ -143,8 +147,78 @@ class call(Object, FunctionAsClass):
             ),
         ):
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
-            value = python_callable(fun_args)
+            try:
+                value = python_callable(fun_args)
+                return value
+            except (Error, ErrorCarrier) as e:
+                if isinstance(e, ErrorCarrier):
+                    e = e.error
+                catch_spec = caller_stack_frame.catch_spec
+                if catch_spec is not None:
+                    caller_stack_frame.catch_spec = None
+                    result = cls.__process_caught_error(e, catch_spec)
+                    if result is not None:
+                        return result
+                    else:
+                        # No catch clause matched the type of the error
+                        raise
+                else:
+                    raise
+
+    @classmethod
+    def __process_caught_error(cls, e: Error, catch_spec: CatchSpec) -> Optional[Object]:
+        """Process a caught error according to the given catch specification.
+
+        If an error type matches, execute the corresponding body and return its
+        value. If no error type matches, return None.
+        """
+        any_error_matched = False
+        caller_stack_frame = cls._caller_stack_frame()
+
+        @python_obj_to_mylang
+        def execute_if_error_matches(*args: Object):
+            """When called with args `[key1, key2, ...] body`, look up each key in the
+            lexical scope, and if it resolves to an error type that `e` is an
+            instance of, execute `body`.
+            """
+            for key in args[:-1]:
+                current_stack_frame.get().set_parent_lexical_scope(
+                    caller_stack_frame.lexical_scope
+                )
+
+                error_type = get(key)
+                if isinstance_(e, error_type):
+                    nonlocal any_error_matched
+                    any_error_matched = True
+                    original_body: StatementList = args[-1]
+                    if catch_spec.error_key is not None:
+                        # Inject the error into the catch body, under the specified key
+                        body = StatementList.from_iterable(
+                            [
+                                Args.from_dict({
+                                    0: ref.of(set_),
+                                    catch_spec.error_key: e
+                                }),
+                                *original_body
+                            ]
+                        )
+                    else:
+                        body = original_body
+
+                    catch_body.aborted = True
+                    return body.execute()
+
+        catch_body = StatementList.from_iterable(
+            (
+                Args(ref.of(execute_if_error_matches)) + args for args in catch_spec.body
+            )
+        )
+        value = catch_body.execute()
+
+        if any_error_matched:
             return value
+        else:
+            return None
 
 
 @expose
@@ -348,6 +422,8 @@ class ref(Object, FunctionAsClass):
     def of(cls, obj: Object, /):
         """Create a reference to an object."""
         instance = super().__new__(cls)
+        if isinstance(obj, ref):
+            obj = obj.obj
         instance.obj = obj
         return instance
 
@@ -360,10 +436,14 @@ class ref(Object, FunctionAsClass):
         return self
 
     def __str__(self):
-        return str(self.obj)
+        return f"{self.__class__.__name__}.of({self.obj})"
 
     def __repr__(self):
-        return repr(self.obj)
+        return f"{self.__class__.__name__}.of({repr(self.obj)})"
+
+    @Special._m_str_
+    def _m_str_(self):
+        return self.obj._m_str_()
 
     @Special._m_repr_
     def _m_repr_(self):

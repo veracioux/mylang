@@ -1,0 +1,32 @@
+error MyError "my error"
+
+# throw with no args
+try (
+    throw,; # TODO fix parsing
+) catch e (
+    Error (
+        # . at the end avoids trailing space
+        echo "Caught error of type Error with message:" $e "."
+    )
+)
+
+# throw with a string arg
+try (
+    throw Error "err msg"
+) catch e (
+    Error (
+        echo "Caught error of type Error with message" $e
+    )
+)
+
+# throw with concrete type
+try (
+    throw MyError
+) catch e (
+    MyError (
+        echo "Caught error of type MyError with message" $e
+    )
+    Error (
+        echo "Caught error of type Error with message" $e
+    )
+)

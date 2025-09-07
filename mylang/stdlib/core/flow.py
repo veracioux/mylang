@@ -3,11 +3,12 @@ import dataclasses
 from typing import NamedTuple
 
 from .func import StatementList
-from ._utils import Special, expose, function_defined_as_class, FunctionAsClass
+from ._utils import Special, expose, function_defined_as_class, FunctionAsClass, issubclass_
 from .base import Object, Args
 from .primitive import undefined
 from .complex import String
-from .class_ import class_
+from .error import Error, ErrorCarrier
+from ._context import CatchSpec, current_stack_frame
 
 
 class _Symbols:
@@ -163,15 +164,16 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
     @classmethod
     @Special._m_classcall_
     @abc.abstractmethod
-    def _m_classcall_(cls, args: Args, /):
-        ...
+    def _m_classcall_(cls, args: Args, /): ...
 
     @classmethod
     def _get_loop_data(cls) -> _LoopData:
         loop_data = cls._caller_lexical_scope().custom_data.get(
             _Symbols.CURRENT_LOOP_DATA, None
         )
-        assert loop_data is not None, f"{getattr(cls, Special._m_name_.name)} statement not inside a loop"
+        assert (
+            loop_data is not None
+        ), f"{getattr(cls, Special._m_name_.name)} statement not inside a loop"
         return loop_data
 
 
@@ -243,12 +245,64 @@ class ignore(Object, FunctionAsClass):
         return undefined
 
 
-# TODO
+@expose
+@function_defined_as_class
+class try_(Object, FunctionAsClass):
+    _m_name_ = Special._m_name_("try")
+
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        assert len(args) >= 1 and isinstance(body := args[0], StatementList), "try's first argument must be a StatementList"
+        assert len(args) >= 3, "try requires 'catch' and a catch body"
+        assert args[1] == String("catch"), "try's 2nd argument must be 'catch'"
+        error_key = args[2] if len(args) == 4 else None
+
+        assert isinstance(catch_body := args[-1], StatementList), "catch's body must be a StatementList"
+        cls.__validate_catch_body(catch_body)
+
+        cls._caller_stack_frame().catch_spec = CatchSpec(error_key, catch_body)
+
+        return body.execute()
+
+    @classmethod
+    def __validate_catch_body(cls, catch_body: StatementList):
+        for statement in catch_body:
+            assert statement.is_positional_only(), "Each statement in a catch body must be positional-only"
+            assert len(statement) >= 2, "Each statement in a catch body must have exactly 2 arguments"
+            assert isinstance(statement[-1], StatementList), "The second argument in each statement of a catch body must be a StatementList"
 
 
-class Event(class_):
-    pass
+@expose
+@function_defined_as_class
+class throw(Object, FunctionAsClass):
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(cls, args: Args, /):
+        if len(args) == 0:
+            raise Error()
+        else:
+            if isinstance(args[0], Error):
+                assert (
+                    len(args) == 1
+                ), "throw does not accept extra arguments after an Error instance"
+                raise args[0]
+            else:
+                from .func import get
 
-class react(Object):
-    """React to an event."""
+                if issubclass_(args[0], Error):
+                    error_class = args[0]
+                else:
+                    error_class = get(args[0])
+                error_class: type[Exception]
+                remaining_args = Args(*args[1:]) + Args.from_dict(args.keyed_dict())
+                error = error_class(remaining_args)
+                if isinstance(error, Error):
+                    raise error
+                else:
+                    raise ErrorCarrier(error)
+        raise Error(args[0])

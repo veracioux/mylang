@@ -6,8 +6,7 @@ Importing this module makes the built-in objects available in the current contex
 from .core._context import LocalsDict
 from .core._utils import Special
 from .core import *
-from .core import op
-from .core import Object, String
+from .core import op, Object, String
 from .io import echo
 
 

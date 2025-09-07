@@ -43,19 +43,6 @@ class Object:
     def _m_init_(self, args: "Args", /):
         assert isinstance(args, Args)
 
-    @Special._m_call_
-    def _m_call_(self, args: "Args", /):
-        """Called when the instance is called by the `call` function.
-        The `call` function takes care of setting up the local context before it makes this call.
-        Parameters
-            args : `Args`
-                The arguments this function was called with. The implementation of `_m_call_` may use these
-                arguments directly, or it can obtain them from the local context, where those arguments are mapped
-                to local keys based on the args and the callable (self)'s parameter signature.
-        """
-        # TODO: Indicate that this function does not exist unless explicitly implemented by subclasses
-        raise NotImplementedError
-
     @Special._m_setattr_
     def _m_setattr_(self, key: "Object", value: "Object", /):
         assert False
@@ -71,7 +58,11 @@ class Object:
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
     def __str__(self):
-        if hasattr(self, Special._m_repr_.name):
+        if hasattr(self, Special._m_str_.name):
+            return self._m_str_().value
+        elif isinstance(self, TypedObject) and hasattr(self.type_, Special._m_str_.name):
+            return self.type_._m_str_(self).value
+        elif hasattr(self, Special._m_repr_.name):
             return str(self._m_repr_())
         else:
             raise NotImplementedError("__str__ is not implemented for this object")
@@ -243,7 +234,7 @@ class Array(Object, Generic[T]):
     def from_iterable(cls, source: Iterable[T], /):
         obj = cls.__new__(cls)
         obj.__init__()
-        obj._m_array_ = Special._m_array_([python_obj_to_mylang(x) for x in source])
+        obj._m_array_: list[T] = Special._m_array_([python_obj_to_mylang(x) for x in source])
         return obj
 
     def __eq__(self, other):
@@ -255,7 +246,12 @@ class Array(Object, Generic[T]):
             and self._m_array_ == other
         )
 
-    def __iter__(self):
+    def __add__(self, other: Iterable[T], /) -> "Array[T]":
+        if not isinstance(other, Iterable):
+            return NotImplemented
+        return Array.from_iterable((*self._m_array_, *other))
+
+    def __iter__(self) -> Iterable[T]:
         return iter(self._m_array_)
 
     def __len__(self):
@@ -271,7 +267,7 @@ class Array(Object, Generic[T]):
         return result
 
     def __repr__(self):
-        return f"{self.__class__.__name__}.from_list({self._m_array_!r})"
+        return f"{self.__class__.__name__}.from_iterable({self._m_array_!r})"
 
     @Special._m_repr_
     def _m_repr_(self):

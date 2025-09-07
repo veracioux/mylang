@@ -315,5 +315,13 @@ class Test_set_get:
         result = get(key)
         assert result == String("value")
 
+
+class Test_ref:
+    def test_ref_ref(self):
+        obj = Object()
+        ref_obj = ref.of(obj)
+        ref_ref_obj = ref.of(ref_obj)
+        assert ref_ref_obj.obj is obj
+
 # TODO: Test function `ref`
 # TODO: This file is incomplete
