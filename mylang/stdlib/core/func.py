@@ -1,5 +1,7 @@
 import contextlib
-from typing import Generic, Optional, TypeVar, final
+import os
+from types import ModuleType
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
 from .error import Error, ErrorCarrier
 
@@ -22,7 +24,8 @@ from ._utils import (
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
     set_contextvar,
-    FunctionAsClass, populate_locals_for_callable,
+    FunctionAsClass,
+    populate_locals_for_callable,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
@@ -44,8 +47,16 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         if currently_called_func.get() is None:
             return
 
-        parameters_and_body = parameters_and_body if isinstance(parameters_and_body, Args) else Args(*parameters_and_body)
-        parameters = Args(*parameters_and_body[:-1]) + Args.from_dict(parameters_and_body.keyed_dict()) + Args(**kwargs)
+        parameters_and_body = (
+            parameters_and_body
+            if isinstance(parameters_and_body, Args)
+            else Args(*parameters_and_body)
+        )
+        parameters = (
+            Args(*parameters_and_body[:-1])
+            + Args.from_dict(parameters_and_body.keyed_dict())
+            + Args(**kwargs)
+        )
         body = parameters_and_body[-1]
         assert isinstance(body, StatementList), "Body must be a StatementList"
         self.name = python_obj_to_mylang(name)
@@ -79,6 +90,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     @Special._m_repr_
     def _m_repr_(self):
         return String(f"fun {self.name!r}")
+
 
 @expose
 @function_defined_as_class(monkeypatch_methods=False)
@@ -133,18 +145,16 @@ class call(Object, FunctionAsClass):
         if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
             # Function defined as class
             python_callable = obj_to_call._m_classcall_
-            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+            needs_new_stack_frame = (
+                obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+            )
         else:
             # Regular MyLang callable
             python_callable = obj_to_call._m_call_
 
         with (
             set_contextvar(currently_called_func, python_callable),
-            (
-                nested_stack_frame()
-                if needs_new_stack_frame
-                else contextlib.nullcontext()
-            ),
+            nested_stack_frame() if needs_new_stack_frame else contextlib.nullcontext(),
         ):
             fun_args = Args.from_positional_keyed(rest, args.keyed_dict())
             try:
@@ -166,7 +176,9 @@ class call(Object, FunctionAsClass):
                     raise
 
     @classmethod
-    def __process_caught_error(cls, e: Error, catch_spec: CatchSpec) -> Optional[Object]:
+    def __process_caught_error(
+        cls, e: Error, catch_spec: CatchSpec
+    ) -> Optional[Object]:
         """Process a caught error according to the given catch specification.
 
         If an error type matches, execute the corresponding body and return its
@@ -195,11 +207,10 @@ class call(Object, FunctionAsClass):
                         # Inject the error into the catch body, under the specified key
                         body = StatementList.from_iterable(
                             [
-                                Args.from_dict({
-                                    0: ref.of(set_),
-                                    catch_spec.error_key: e
-                                }),
-                                *original_body
+                                Args.from_dict(
+                                    {0: ref.of(set_), catch_spec.error_key: e}
+                                ),
+                                *original_body,
                             ]
                         )
                     else:
@@ -209,9 +220,7 @@ class call(Object, FunctionAsClass):
                     return body.execute()
 
         catch_body = StatementList.from_iterable(
-            (
-                Args(ref.of(execute_if_error_matches)) + args for args in catch_spec.body
-            )
+            (Args(ref.of(execute_if_error_matches)) + args for args in catch_spec.body)
         )
         value = catch_body.execute()
 
@@ -277,6 +286,7 @@ class set_(Object, FunctionAsClass):
 @function_defined_as_class
 class use(Object, FunctionAsClass):
     """Use code from another file."""
+
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     __cache: dict[str, Object] = {}
@@ -294,8 +304,8 @@ class use(Object, FunctionAsClass):
         if len(args[:]) != 1:
             raise ValueError("use requires exactly one positional argument")
 
-        if not isinstance(args[0], String):
-            raise TypeError("use requires a String as the first argument")
+        if not isinstance(source := args[0], (String, Path)):
+            raise NotImplementedError("use requires a String or Path as the first argument")
 
         use_cache = True
         if "use_cache" in args:
@@ -305,24 +315,47 @@ class use(Object, FunctionAsClass):
             if not isinstance(use_cache, Bool):
                 raise TypeError("use_cache must be a Bool")
 
-        # TODO: Use something more advanced
-        unique_id = args[0].value
+        if isinstance(source, (String, Path)):
+            loader: Callable[[Any], Object] = cls.loaders.lookup
+        else:
+            assert False, "Unreachable"
 
-        if use_cache and unique_id in use.__cache:
+        cache_id = cls._get_cache_id(source, loader)
+
+        if use_cache and cache_id in use.__cache:
             # Return cached value if available
             exported_value = use.__cache[args[0].value]
 
             cls._caller_locals()[args[0]] = exported_value
             return exported_value
 
-        # TODO: Use a lookup strategy
-        # TODO: Support Path in addition to String
+        exported_value = loader(source)
+
+        # TODO: Modify to work with Path
+        cls._caller_locals()[source] = exported_value
+
+        use.__cache[cache_id] = exported_value
+
+        return exported_value
+
+    @classmethod
+    def _set_alias_binding_in_caller_context(
+        cls, name: "String", exported_value: Object
+    ):
+        """Set the alias binding in the caller's lexical scope."""
+        # TODO: Handle multiple args potentially
+        set_(Args.from_dict({name: exported_value}))
+
+    @classmethod
+    def _get_cache_id(cls, source, loader):
+        return (source, loader)
+
+    @classmethod
+    def _load_mylang_module(cls, code: str):
         from ...parser import STATEMENT_LIST, parser
         from ...transformer import Transformer
 
         # TODO: File extension
-        with open(args[0].value + ".my", "r") as f:
-            code = f.read()
         tree = parser.parse(code, start=STATEMENT_LIST)
 
         # Enter a nested context, execute the module and obtain its exported
@@ -340,19 +373,43 @@ class use(Object, FunctionAsClass):
                 # TODO: Use identity instead of hashing dict
                 exported_value = Dict.from_dict(stack_frame.locals.dict())
 
-        cls._caller_locals()[args[0]] = exported_value
-
-        use.__cache[unique_id] = exported_value
-
         return exported_value
 
-    @classmethod
-    def _set_alias_binding_in_caller_context(
-        cls, name: "String", exported_value: Object
-    ):
-        """Set the alias binding in the caller's lexical scope."""
-        # TODO: Handle multiple args potentially
-        set_(Args.from_dict({name: exported_value}))
+    class loaders:
+        """Contains delegates that are used based on the type of source."""
+
+        class lookup:
+            def __init__(self, source: Union[String, Path]):
+                pass
+
+            def __new__(cls, source: Union[String, Path]):
+                if isinstance(source, Path):
+                    assert all(
+                        isinstance(part, String) for part in source.parts
+                    ), "All parts of a Path must be String"
+
+                import importlib.util
+                spec = importlib.util.find_spec(f"..{source}", package=__package__)
+                if spec:
+                    return cls.std(source)
+                else:
+                    return cls.third_party(source)
+
+            @classmethod
+            def std(cls, source: Union[String, Path]) -> Object:
+                import importlib
+                module = importlib.import_module(f"..{source}", package=__package__)
+                return python_obj_to_mylang(module)
+
+            @classmethod
+            def third_party(cls, source: Union[String, Path]) -> Object:
+                if not isinstance(source, String):
+                    raise NotImplementedError(
+                        "Third party modules can only be imported by String for now"
+                    )
+                with open(source.value + ".my", "r") as f:
+                    code = f.read()
+                return use._load_mylang_module(code)
 
 
 class StatementList(Array[Args]):
@@ -401,10 +458,9 @@ class ExecutionBlock(StatementList, IncompleteExpression):
     def evaluate(self) -> Object:
         caller_stack_frame = current_stack_frame.get()
         with nested_stack_frame() as stack_frame:
-            stack_frame.set_parent_lexical_scope(
-                caller_stack_frame.lexical_scope
-            )
+            stack_frame.set_parent_lexical_scope(caller_stack_frame.lexical_scope)
             return super().execute()
+
 
 @expose
 @function_defined_as_class
@@ -457,6 +513,7 @@ class ref(Object, FunctionAsClass):
 @final
 class op(Object, FunctionAsClass):
     """Invoke an operation by given operator in Polish notation."""
+
     from ._operators import operators
 
     # TODO: Make the operation functions first class citizens

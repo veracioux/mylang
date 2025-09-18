@@ -2,13 +2,13 @@ import abc
 from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
-from types import FunctionType, MethodType
+from types import FunctionType, MethodType, ModuleType
 from typing import TYPE_CHECKING, Any, TypeVar, Generic, Union
 
 if TYPE_CHECKING:
-    from .base import Object, Args
-    from ._context import LocalsDict
-    from .class_ import class_
+    from ..base import Object, Args
+    from .._context import LocalsDict
+    from ..class_ import class_
 
 
 T = TypeVar("T")
@@ -26,7 +26,9 @@ class _SpecialAttrDescriptor:
 
     def __call__(self, value: T) -> T:
         if callable(value) and value.__name__ != self.name:
-            raise ValueError(f"Function name must match special attribute name {self.name}. Got {value.__name__}")
+            raise ValueError(
+                f"Function name must match special attribute name {self.name}. Got {value.__name__}"
+            )
 
         return value
 
@@ -42,6 +44,7 @@ class Special:
         class MyClass:
             _m_dict_ = Special._m_dict_(value)
     """
+
     _m_dict_ = _SpecialAttrDescriptor()
     _m_array_ = _SpecialAttrDescriptor()
     _m_name_ = _SpecialAttrDescriptor()
@@ -64,30 +67,33 @@ class Special:
 
 def python_obj_to_mylang(obj):
     """Convert a Python object to a MyLang analog."""
-    from .base import Object
+    from ..base import Object
 
     if isinstance(obj, Object):
         return obj
     elif isinstance(obj, type) and issubclass(obj, Object):
         return obj
     elif isinstance(obj, str):
-        from .complex import String
+        from ..complex import String
 
         return String(obj)
     elif isinstance(obj, dict):
-        from .base import Dict
+        from ..base import Dict
 
         return Dict.from_dict(obj)
     elif isinstance(obj, int):
-        from .primitive import Int
+        from ..primitive import Int
 
         return Int(obj)
     elif isinstance(obj, list):
-        from .base import Array
+        from ..base import Array
 
         return Array.from_iterable(obj)
+    elif isinstance(obj, ModuleType):
+        from .types import PythonModuleWrapper
+        return PythonModuleWrapper(obj)
     elif obj is None:
-        from .primitive import undefined
+        from ..primitive import undefined
 
         return undefined
     elif isinstance(obj, FunctionType):
@@ -97,7 +103,9 @@ def python_obj_to_mylang(obj):
     elif obj in all_functions_defined_as_classes:
         return obj
     else:
-        raise NotImplementedError(f"{python_obj_to_mylang.__name__} is not implemented for type {type(obj)}")
+        raise NotImplementedError(
+            f"{python_obj_to_mylang.__name__} is not implemented for type {type(obj)}"
+        )
 
 
 def python_dict_from_args_kwargs(*args, **kwargs):
@@ -105,9 +113,9 @@ def python_dict_from_args_kwargs(*args, **kwargs):
 
 
 def mylang_obj_to_python(obj: "Object"):
-    from .complex import String
-    from .base import Dict, Args, Object
-    from .primitive import Scalar, Bool, undefined, null
+    from ..complex import String
+    from ..base import Dict, Args, Object
+    from ..primitive import Scalar, Bool, undefined, null
 
     if isinstance(obj, String):
         return obj.value
@@ -158,7 +166,8 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
     """
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
-        from .func import call, ref
+        from ..func import call, ref
+
         return call(ref.of(self), *args, **kwargs)
 
     @classmethod
@@ -181,7 +190,7 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
         parent of the current stack frame. If False, it will be the current
         stack frame.
         """
-        from ._context import current_stack_frame
+        from .._context import current_stack_frame
 
         this_stack_frame = current_stack_frame.get()
         return (
@@ -214,9 +223,12 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
 
     @classmethod
     def __should_receive_new_stack_frame(cls):
-        from .func import call
+        from ..func import call
+
         current_func = currently_called_func.get()
-        if cls is call:  # `call` is a special case: it doesn't get currently_called_func set
+        if (
+            cls is call
+        ):  # `call` is a special case: it doesn't get currently_called_func set
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
         if current_func.__name__ == Special._m_classcall_.name:
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
@@ -228,11 +240,11 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
 
 def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
     def decorator(cls: FunctionAsClass):
-        assert isinstance(cls, type) and issubclass(cls, FunctionAsClass), (
-            f"Class {cls.__name__} should be a subclass of FunctionAsClass"
-        )
+        assert isinstance(cls, type) and issubclass(
+            cls, FunctionAsClass
+        ), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
 
-        from .complex import String
+        from ..complex import String
 
         # Register the class as a function
         all_functions_defined_as_classes.add(cls)
@@ -249,11 +261,13 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
                 only_callable_by_call_decorator(cls._m_classcall_.__func__),
             )
             if hasattr(cls, Special._m_call_.name):
-                cls._m_call_ = Special._m_call_(only_callable_by_call_decorator(cls._m_call_))
+                cls._m_call_ = Special._m_call_(
+                    only_callable_by_call_decorator(cls._m_call_)
+                )
 
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
-                from .func import call, ref
+                from ..func import call, ref
 
                 if currently_called_func.get() is __new__:
                     with set_contextvar(currently_called_func, cls._m_classcall_):
@@ -284,16 +298,21 @@ _exposed_class_attrs = set[tuple[type, str]]()
 """Holds all (class, attr_name) pairs that are exposed to MyLang."""
 
 
-_exposed_obj_attrs = set[tuple[type, str]]()
+_exposed_instance_attrs = set[tuple[type, str]]()
 """Holds (class, attr_name) pairs. Each pair means that the attribute named
 `attr_name` should be exposed to MyLang for instances of `class` and its subclasses."""
+
+
+_exposed_obj_attrs = set[tuple[Any, str]]()
+"""Holds (obj, attr_name) pairs. Each pair means that the attribute named
+`attr_name` on object `obj` should be exposed to MyLang."""
 
 
 TypeObject = TypeVar("TypeObject", bound="Object")
 
 
 def expose(obj: TypeObject):
-    """Expose the object outside of Python."""
+    """Expose the object outside of Python under all circumstances."""
     _exposed_objects.add(id(obj))
     # TODO: Make sure that callables are decorated by only_callable_by_call_decorator
     # (need to determine how to recognize something as a callable)
@@ -302,11 +321,17 @@ def expose(obj: TypeObject):
 
 def expose_class_attr(attr_name: str):
     """Decorator to expose a class attribute in the context of MyLang."""
+
     def decorator(cls):
         _exposed_class_attrs.add((cls, attr_name))
         return cls
 
     return decorator
+
+
+def expose_obj_attr(obj: Any, attr_name: str):
+    """Expose an instance attribute in the context of MyLang."""
+    _exposed_obj_attrs.add((obj, attr_name))
 
 
 def is_exposed(obj: "Object"):
@@ -358,8 +383,8 @@ def only_callable_by_call_decorator(func):
 
 def _python_func_to_mylang(func: FunctionType) -> "Object":
     """Convert a Python function to a MyLang function."""
-    from .base import Object, Args
-    from .func import StatementList
+    from ..base import Object, Args
+    from ..func import StatementList
 
     @function_defined_as_class
     class __func(Object, FunctionAsClass):
@@ -400,13 +425,21 @@ def populate_locals_for_callable(
 
 # TODO: Implement python-like getattr attribute lookup
 def getattr_(obj: "Object", key: "Object"):
-    from ._context import LexicalScope, LocalsDict
-    from .base import TypedObject, Dict, Object
-    from .complex import String
+    from .._context import LexicalScope, LocalsDict
+    from ..base import TypedObject, Dict, Object
+    from ..complex import String
+    from .types import PythonModuleWrapper
 
     if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
         return obj[key]
-    elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
+    elif isinstance(obj, PythonModuleWrapper):
+        if isinstance(key, String) and is_attr_exposed(obj.module, key.value):
+            return getattr(obj.module, key.value)
+        else:
+            assert False, f"Object {obj} has no attribute {key}"
+    elif isinstance(obj, Object) or (
+        isinstance(obj, type) and issubclass(obj, FunctionAsClass)
+    ):
         # Try to access via _m_dict_ first
         try:
             m_dict = getattr(obj, Special._m_dict_.name)
@@ -414,7 +447,8 @@ def getattr_(obj: "Object", key: "Object"):
         except:
             # Try to access on class prototype if applicable
             if isinstance(obj, TypedObject):
-                from .class_ import Method
+                from ..class_ import Method
+
                 try:
                     value = obj.type_.prototype[key]
                     if isinstance(value, Method):
@@ -435,8 +469,9 @@ def getattr_(obj: "Object", key: "Object"):
 
 def isinstance_(obj: "Object", type_: type):
     """Instance check in the context of MyLang."""
-    from .base import TypedObject
-    from .func import fun
+    from ..base import TypedObject
+    from ..func import fun
+
     if isinstance(obj, TypedObject):
         return issubclass_(obj.type_, type_)
     elif isinstance(obj, type_):
@@ -449,8 +484,8 @@ def isinstance_(obj: "Object", type_: type):
 
 def issubclass_(obj: "Object", type_: Union[type, "class_"]):
     """Subclass check in the context of MyLang."""
-    from .class_ import class_
-    from .base import Object
+    from ..class_ import class_
+    from ..base import Object
 
     if type_ is Object:
         return True

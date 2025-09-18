@@ -1,5 +1,5 @@
 import functools
-from typing import Any
+from typing import Any, Union
 
 from ._utils import Special
 
@@ -49,7 +49,7 @@ class Path(Object):
     def _m_init_(self, args: Args, /):
         assert args.is_positional_only, "Path takes only positional arguments"
         assert len(args) > 1, "Path must have at least two parts"
-        self.parts = tuple(args[:])
+        self.parts: tuple[Union[String, Dots]] = tuple(args[:])
 
     @Special._m_repr_
     def _m_repr_(self):
