@@ -1,0 +1,47 @@
+The =doc= module provides objects and utilities for documenting mylang
+constructs. In contrast to other languages, documentation in mylang is a
+first-class citizen, and it is structured, as opposed to being an unstructured string.
+For simple cases though, simple strings can still be used.
+
+* The =Doc= class
+Stands for "Document". It is nothing more than an array of objects, where each
+object can be a =String= in the simplest case, or more complex objects based on
+what is actually being documented.
+
+The purpose of the =Doc= class is as a base class for context-specific
+documents (e.g., function documentation, class documentation, etc.) which
+can enforce their own structure.
+
+#+begin_src shell
+  class Doc is Array<Object> (
+      pseudo __str__ (
+          # Join all elements into a single string recursively
+          # TODO: Determine format to be used, but Markdown seems like a good choice for MVP
+      )
+  )
+#+end_src
+* The =doc= utility
+Stands for "documentation". A utility function for obtaining and manipulating documentations
+of various constructs.
+
+## Get documentation
+The simplest case is merely obtaining the documentation of a construct.
+
+Assuming =f= is function:
+#+begin_src shell
+  doc f  # Returns a Doc object representing the documentation of f
+#+end_src
+
+** Use cases
+*** Document at creation
+Note: Uses decorators from [[file:decorators.org][here]].
+
+Create a =Doc= from a markdown string and attach it to a function.
+#+begin_src shell
+  @doc """
+  Compute the n-th Fibonacci number.
+  """,
+  fun fibonacci ()
+#+end_src
+* Future ideas
+- Doc can be used as a base class for markup languages like HTML, XML, Markdown etc.

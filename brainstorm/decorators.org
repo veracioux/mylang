@@ -1,0 +1,82 @@
+Decorators are inspired by Python and are a way to modify or enhance the behavior of functions or classes.
+
+* Definition and usage
+You can define a simple function that modifies a target:
+#+begin_src shell
+  fun mydecorator target (
+      ...
+      return $modified_target
+  )
+#+end_src
+You may use this function the usual way to modify a target function:
+#+begin_src shell
+  modified_func = {
+      mydecorator {
+          fun target (
+              ...
+          )
+      }
+  }
+#+end_src
+But MyLang defines the =@= operator to do this more conveniently:
+#+begin_src shell
+  @mydecorator,
+  fun target (
+      ...
+  )
+#+end_src
+** Advanced
+The decorator above is simple, it just takes a target and returns it modified.
+But a decorator function can take additional arguments. In this case, the last
+item is the target.
+
+Example:
+#+begin_src shell
+  fun repeat n target (
+      fun wrapper arg (
+          result = arg
+          pseudo for i in {range 1 $n} (
+              result = {target result}
+          )
+          return $result
+      )
+      return $wrapper
+  )
+
+  @repeat 3,
+  fun double x (
+      return $x * 2
+  )
+
+  double 1  # Returns 8, because (1*2)*2*2 = 8
+#+end_src
+* Utility: Annotations
+Sometimes you don't want to modify a function, but just attach some metadata to
+it, i.e. treat it specially in some context. For this, you can use annotations,
+which are just a convenience syntax. It is simply a decorator that returns its
+target unmodified.
+
+Example:
+#+begin_src shell
+  annotation deprecated target (
+      some_metadata_dict.$target = deprecated
+  )
+
+  @deprecated,
+  fun myfunc (
+      ...
+  )
+#+end_src
+* Examples
+** A decorator that makes each call of a function logged
+#+begin_src shell
+  fun log_calls func (
+      fun wrapper arg (
+          pseudo log "Calling function: " &func.name
+          return {func arg}
+      )
+      return $wrapper
+  )
+
+  f = log_calls
+#+end_src

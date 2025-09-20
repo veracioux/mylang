@@ -1,0 +1,25 @@
+Brainstorms for MyLang features.
+
+The idea is to evolve incomplete ideas here and then develop them in code. When
+everything from a brainstorm document is implemented, the document is obsolete
+and can be deleted.
+
+The source of truth for code documentation should be the code itself, and all
+production documentation will be generated from the code in whatever format
+necessary (HTML, Markdown, etc).
+
+* Conventions
+- Since =MyLang='s syntax is most similar to shell, use the =shell= language for code blocks.
+- Whenever you know that a feature is going to be implemented at some point, but
+  are unsure as to how exactly, use the =pseudo= keyword and write
+  your code in some way that will make intuitive sense for users of Python or
+  some other popular language. If possible, use the syntax of the language that
+  you think best implements such a feature.
+
+  Example: We want to have something like Python's =__str__= method, but we
+  don't know how to name it yet. So we write:
+  #+begin_src shell
+    pseudo __str__ (
+        return "some string representation"
+    )
+  #+end_src
