@@ -1,0 +1,33 @@
+* Client
+** Most flexible (but potentially verbose)
+#+begin_src shell
+  c = {http.Client http://host:port timeout=10s source_address=192.168.0.45:31909}
+
+  # Set default headers for all requests
+  c.headers."user-agent" = "MyApp/1.0"
+  c.headers += (
+      accept = "application/json",
+      host = "api.example.com",
+      "x-api-key" = "your_api_key_here",
+  )
+
+  c.request GET /v1/resources?q1=v1&q2=v2 headers=(
+      "content-type" = {MIME application/json charset="utf-8"}
+  )
+#+end_src
+** Quick and convenient
+#+begin_src shell
+  response = {
+      # Emulates the structure of an actual HTTP request
+      http (
+          GET http://host:port/v1/resources?q1=v1&q2=v2
+          accept = "application/json"
+          "x-api-key" = "your_api_key_here"
+      )
+  }
+
+  status = &response.status
+  headers = &response.headers
+  body = &response.body
+#+end_src
+* TODO Server
