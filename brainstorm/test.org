@@ -1,0 +1,46 @@
+#+TITLE: Testing library
+
+* Syntax
+#+begin_src shell
+  test [&Target | .property | (&Target1, &Target2)] "description" (
+      pseudo group Optional (
+          before_each (
+              # Code to run before each test
+          )
+          after_each (
+              # Code to run after each test
+          )
+          wrap_each (
+              # Code to run around each test
+              try (
+                  _  # TODO: Determine exact syntax for delegating to the test
+              ) finally (
+              )
+          )
+      )
+
+      test [.tested_func] "description" (
+          pseudo group prep (
+              # Mocking must be intuitive and syntax-light
+              # Mocking is intelligent - it knows how to handle different types of target
+              mock &Target (
+                  fun internal_func args (
+                      return return_value
+                  )
+              )
+          )
+          pseudo group do (
+              target = {Target}
+              result = {target.tested_func args}
+          )
+          pseudo group assert (
+              assert $result == expected_value
+              assert.called (
+                  target.internal_func args
+              )
+          )
+      )
+  )
+#+end_src
+* Common scenarios
+** TODO Simple unit test
