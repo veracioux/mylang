@@ -9,7 +9,7 @@ from mylang.transformer import Transformer
 from mylang.stdlib.core._context import (
     nested_stack_frame,
 )
-from mylang.stdlib import builtins
+from mylang.stdlib import builtins_
 
 
 @contextmanager
@@ -20,7 +20,7 @@ def read_module(*path_components: str):
 
 def execute_module(*path_components: str):
     with (
-        nested_stack_frame(builtins.create_locals_dict()),
+        nested_stack_frame(builtins_.create_locals_dict()),
         read_module(*path_components) as text,
     ):
         tree = parser.parse(text, start=STATEMENT_LIST)

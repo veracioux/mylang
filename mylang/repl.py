@@ -8,8 +8,8 @@ from mylang.parser import STATEMENT_LIST, parser
 from mylang.stdlib.core import Args, undefined, Object
 from mylang.stdlib.core.base import IncompleteExpression
 from mylang.transformer import Transformer
-from mylang.stdlib.core.func import StatementList, ExecutionBlock
-from mylang.stdlib import builtins as builtins_
+from mylang.stdlib.core.func import StatementList
+from mylang.stdlib import builtins_
 from mylang.stdlib.core._context import StackFrame, current_stack_frame
 
 

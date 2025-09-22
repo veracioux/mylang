@@ -19,7 +19,7 @@ def main():
         input_file_data = sys.stdin.read()
 
     if input_file_data:
-        from mylang.stdlib import builtins as builtins_
+        from mylang.stdlib import builtins_
 
         # TODO: Use with to clean up stack frame
         current_stack_frame.set(

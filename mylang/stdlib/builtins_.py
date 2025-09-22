@@ -8,6 +8,7 @@ from .core._utils import Special
 from .core import *
 from .core import op, Object, String
 from .io import echo
+from .doc import doc
 
 
 def create_locals_dict():

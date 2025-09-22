@@ -357,7 +357,7 @@ class use(Object, FunctionAsClass):
     def _load_mylang_module(cls, code: str):
         from ...parser import STATEMENT_LIST, parser
         from ...transformer import Transformer
-        from .. import builtins as builtins_
+        from .. import builtins_
 
         # TODO: File extension
         tree = parser.parse(code, start=STATEMENT_LIST)
