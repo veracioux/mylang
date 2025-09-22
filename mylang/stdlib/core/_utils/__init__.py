@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import functools
 from types import FunctionType, MethodType, ModuleType
-from typing import TYPE_CHECKING, Any, TypeVar, Generic, Union
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Generic, Union
 
 if TYPE_CHECKING:
     from ..base import Object, Args
@@ -152,13 +152,13 @@ TypeReturn = TypeVar("TypeReturn", bound="Object")
 
 
 class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
-    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME: Optional[bool] = None
     """Indicates that `_m_classcall_` should receive a nested stack frame.
 
     Cautiously override this attribute. It is intended for control flow
     functions that need direct access to the caller's stack frame.
     """
-    _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+    _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME: Optional[bool] = None
     """Indicates that `_m_call_` should receive a nested stack frame.
 
     Cautiously override this attribute. It is intended for control flow
@@ -243,6 +243,12 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
         assert isinstance(cls, type) and issubclass(
             cls, FunctionAsClass
         ), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
+        assert not hasattr(cls, "_m_classcall_") or cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None, (
+            "Please explicitly set _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
+        )
+        assert not hasattr(cls, "_m_call_") or cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None, (
+            "Please explicitly set _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
+        )
 
         from ..complex import String
 
@@ -388,6 +394,7 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
 
     @function_defined_as_class
     class __func(Object, FunctionAsClass):
+        _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
         if func.__name__ != "<lambda>":
             _m_name_ = Special._m_name_(func.__name__)
 

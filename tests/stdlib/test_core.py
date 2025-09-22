@@ -148,6 +148,8 @@ class Test_set:
 class Test_call:
     @function_defined_as_class
     class func(Object, FunctionAsClass):
+        _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
         @classmethod
         @Special._m_classcall_
         def _m_classcall_(cls, args: Args, /):

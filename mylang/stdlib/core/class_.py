@@ -30,6 +30,8 @@ class _Symbols:
 @expose_class_attr("init")
 class class_(Object, FunctionAsClass):
     _m_name_ = Special._m_name_("class")
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+    _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
     def __init__(self, name: Any, *rest: Any):
         # TODO: Validate args

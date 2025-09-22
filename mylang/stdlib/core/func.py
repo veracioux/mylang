@@ -42,6 +42,7 @@ class _Symbols:
 @function_defined_as_class
 class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
+    _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
     def __init__(self, name: Object, /, *parameters_and_body: Object, **kwargs):
         # When somebody constructs fun(...), Python will run __init__ automatically. Since we already called it from
@@ -512,14 +513,13 @@ class ref(Object, FunctionAsClass):
     def _m_repr_(self):
         return self.obj._m_repr_()
 
-    # TODO: Implement more
-
 
 @expose
 @function_defined_as_class
 @final
 class op(Object, FunctionAsClass):
     """Invoke an operation by given operator in Polish notation."""
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
     from ._operators import operators
 
