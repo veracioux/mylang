@@ -354,6 +354,7 @@ class use(Object, FunctionAsClass):
     def _load_mylang_module(cls, code: str):
         from ...parser import STATEMENT_LIST, parser
         from ...transformer import Transformer
+        from .. import builtins as builtins_
 
         # TODO: File extension
         tree = parser.parse(code, start=STATEMENT_LIST)
@@ -362,8 +363,12 @@ class use(Object, FunctionAsClass):
         # value The exported value is either a dict of the module's locals or a
         # specific return value if return was called from within.
         exported_value: Object
+
         with nested_stack_frame() as stack_frame:
-            Transformer().transform(tree)
+            # Inject builtins
+            stack_frame.set_parent_lexical_scope(LexicalScope(builtins_.create_locals_dict()))
+            statement_list = Transformer().transform(tree)
+            statement_list.execute()
 
             if stack_frame.return_value is not None:
                 exported_value = stack_frame.return_value
