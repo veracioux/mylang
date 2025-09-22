@@ -1,8 +1,6 @@
 import functools
 from typing import Any, Union
 
-from ._utils import Special
-
 from .base import Args, Object
 
 
@@ -19,7 +17,6 @@ class String(Object):
         self.value = value if isinstance(value, str) else str(value)
         super().__init__()
 
-    @Special._m_init_
     def _m_init_(self, value: str = ""):
         pass
 
@@ -45,16 +42,14 @@ class Path(Object):
     def __init__(self, *args):
         super().__init__(*args)
 
-    @Special._m_init_
     def _m_init_(self, args: Args, /):
         assert args.is_positional_only, "Path takes only positional arguments"
         assert len(args) > 1, "Path must have at least two parts"
         self.parts: tuple[Union[String, Dots]] = tuple(args[:])
 
-    @Special._m_repr_
     def _m_repr_(self):
         string = ".".join(
-            str(getattr(part, Special._m_repr_.name)()) for part in self.parts
+            str(part._m_repr_()) for part in self.parts
         )
         slice_ = slice(
             1 if isinstance(self.parts[0], Dots) else 0,
@@ -74,6 +69,5 @@ class Dots(Object):
     def __eq__(self, value: object, /):
         return isinstance(value, Dots) and self.count == value.count
 
-    @Special._m_repr_
     def _m_repr_(self):
         return String("." * self.count)

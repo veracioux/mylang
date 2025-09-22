@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Optional
 
-from .._utils import FunctionAsClass, Special, expose, function_defined_as_class
+from .._utils import FunctionAsClass, expose, function_defined_as_class
 from ..base import Object
 from ..complex import String
 
@@ -16,7 +16,6 @@ class Error(Object, Exception):
         assert len(args) <= 1, "Error takes at most one argument"
         self.message = args[0] if len(args) > 0 else None
 
-    @Special._m_str_
     def _m_str_(self):
         return String(self.message or "")
 
@@ -48,13 +47,12 @@ class error(Object, FunctionAsClass):
         Err = class_(key, ref.of(base), StatementList())
         def _m_str_(*args):
             return String(message or "") if args else key
-        setattr(Err, Special._m_str_.name, _m_str_)
+        setattr(Err, "_m_str_", _m_str_)
         Err.__name__ = key.value
 
         return Err
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args, /):
         positional = args[:]
         key = positional[0]

@@ -11,7 +11,6 @@ from ._context import (
     StackFrame,
 )
 from ._utils import (
-    Special,
     currently_called_func,
     expose,
     function_defined_as_class,
@@ -70,7 +69,6 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         self.__class__._caller_locals()[name] = self
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: "Args", /):
         # TODO: Args must have unique names
         func = super().__new__(cls)
@@ -80,7 +78,6 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         )
         return func
 
-    @Special._m_call_
     def _m_call_(self, args: Args, /) -> TypeReturn:
         stack_frame = current_stack_frame.get()
         stack_frame.set_parent_lexical_scope(self.closure_lexical_scope)
@@ -90,7 +87,6 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name!r})"
 
-    @Special._m_repr_
     def _m_repr_(self):
         return String(f"{{fun {self.name.value!r}}}")
 
@@ -129,7 +125,6 @@ class call(Object, FunctionAsClass):
         super().__init__(func_key, *args, **kwargs)
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
 
@@ -239,7 +234,6 @@ class get(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
@@ -260,10 +254,9 @@ class get(Object, FunctionAsClass):
 @function_defined_as_class
 class set_(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
-    _m_name_ = Special._m_name_("set")
+    _m_name_ = "set"
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         from .primitive import undefined
 
@@ -298,7 +291,6 @@ class use(Object, FunctionAsClass):
         super().__init__(source, use_cache=use_cache)
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         from .complex import String
         from .primitive import undefined
@@ -455,7 +447,6 @@ class StatementList(Array[Args]):
 
         return undefined
 
-    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -492,7 +483,6 @@ class ref(Object, FunctionAsClass):
         return instance
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         self = super().__new__(ref)
         key = args[0]
@@ -505,11 +495,9 @@ class ref(Object, FunctionAsClass):
     def __repr__(self):
         return f"{self.__class__.__name__}.of({repr(self.obj)})"
 
-    @Special._m_str_
     def _m_str_(self):
         return self.obj._m_str_()
 
-    @Special._m_repr_
     def _m_repr_(self):
         return self.obj._m_repr_()
 
@@ -530,7 +518,6 @@ class op(Object, FunctionAsClass):
         super().__init__(*args)
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])
@@ -546,7 +533,6 @@ class export(Object, FunctionAsClass):
         self.obj = obj
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(self, args, /):
         positional = args[:]
         keyed = args.keyed_dict()

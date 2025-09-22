@@ -1,6 +1,6 @@
 import sys
 import subprocess
-from ..core._utils import FunctionAsClass, expose_obj_attr, function_defined_as_class, Special
+from ..core._utils import FunctionAsClass, expose_obj_attr, function_defined_as_class
 from ..core import Object, String
 
 
@@ -8,7 +8,6 @@ from ..core import Object, String
 class run(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
-    @Special._m_classcall_
     @classmethod
     def _m_classcall_(cls, args):
         assert args.is_positional_only(), "Only positional arguments are allowed"

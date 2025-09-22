@@ -14,57 +14,6 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-class _SpecialAttrDescriptor:
-    def __set_name__(self, owner: "Special", name: str):
-        self.name = name
-
-    def __get__(self, instance, owner) -> "_SpecialAttrDescriptor":
-        if instance is not None:
-            raise RuntimeError(f"Cannot use {self.__class__.__name__} with instance")
-
-        return self
-
-    def __call__(self, value: T) -> T:
-        if callable(value) and value.__name__ != self.name:
-            raise ValueError(
-                f"Function name must match special attribute name {self.name}. Got {value.__name__}"
-            )
-
-        return value
-
-    def __set__(self, instance, value):
-        raise AttributeError(f"Cannot set attribute {self.name}")
-
-
-class Special:
-    """A registry of all special attributes that MyLang uses, for better
-    maintainability, discoverability and easier refactoring.
-
-    Example:
-        class MyClass:
-            _m_dict_ = Special._m_dict_(value)
-    """
-
-    _m_dict_ = _SpecialAttrDescriptor()
-    _m_array_ = _SpecialAttrDescriptor()
-    _m_name_ = _SpecialAttrDescriptor()
-    _m_init_ = _SpecialAttrDescriptor()
-    _m_str_ = _SpecialAttrDescriptor()
-    _m_repr_ = _SpecialAttrDescriptor()
-    _m_setattr_ = _SpecialAttrDescriptor()
-    _m_call_ = _SpecialAttrDescriptor()
-    """Called when the instance is called by the `call` function.
-    The `call` function takes care of setting up the local context before it makes this call.
-    Parameters
-        args : `Args`
-            The arguments this function was called with. The implementation of `_m_call_` may use these
-            arguments directly, or it can obtain them from the local context, where those arguments are mapped
-            to local keys based on the args and the callable (self)'s parameter signature.
-    """
-    _m_classcall_ = _SpecialAttrDescriptor()
-    _m_lexical_scope_ = _SpecialAttrDescriptor()
-
-
 def python_obj_to_mylang(obj):
     """Convert a Python object to a MyLang analog."""
     from ..base import Object
@@ -172,7 +121,6 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
 
     @classmethod
     @abc.abstractmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: "Args", /) -> "Object":
         """Called by the `call` function.
 
@@ -230,9 +178,9 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
             cls is call
         ):  # `call` is a special case: it doesn't get currently_called_func set
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
-        if current_func.__name__ == Special._m_classcall_.name:
+        if current_func.__name__ == "_m_classcall_":
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
-        elif current_func.__name__ == Special._m_call_.name:
+        elif current_func.__name__ == "_m_call_":
             return cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME
         else:
             raise NotImplementedError
@@ -258,7 +206,7 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
         # Set the function name
         cls.name = (
             python_obj_to_mylang(cls._m_name_)
-            if hasattr(cls, Special._m_name_.name)
+            if hasattr(cls, "_m_name_")
             else String(cls.__name__)
         )
 
@@ -266,10 +214,8 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
             cls._m_classcall_ = classmethod(
                 only_callable_by_call_decorator(cls._m_classcall_.__func__),
             )
-            if hasattr(cls, Special._m_call_.name):
-                cls._m_call_ = Special._m_call_(
-                    only_callable_by_call_decorator(cls._m_call_)
-                )
+            if hasattr(cls, "_m_call_"):
+                cls._m_call_ = only_callable_by_call_decorator(cls._m_call_)
 
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
@@ -396,10 +342,9 @@ def _python_func_to_mylang(func: FunctionType) -> "Object":
     class __func(Object, FunctionAsClass):
         _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
         if func.__name__ != "<lambda>":
-            _m_name_ = Special._m_name_(func.__name__)
+            _m_name_ = func.__name__
 
         @classmethod
-        @Special._m_classcall_
         def _m_classcall_(cls, args: "Args", /):
             """Call the function with the given arguments."""
             return func(*args[:], **args.keyed_dict())
@@ -449,7 +394,7 @@ def getattr_(obj: "Object", key: "Object"):
     ):
         # Try to access via _m_dict_ first
         try:
-            m_dict = getattr(obj, Special._m_dict_.name)
+            m_dict = obj._m_dict_
             return m_dict[key]
         except:
             # Try to access on class prototype if applicable
@@ -515,8 +460,8 @@ def getname(obj: "Object"):
 
     if isinstance(obj, fun):
         return obj.name
-    if hasattr(obj, Special._m_name_.name):
-        return String(getattr(obj, Special._m_name_.name))
+    if hasattr(obj, "_m_name_"):
+        return String(obj._m_name_)
     elif hasattr(obj, "__name__"):
         from ..complex import String
         return String(obj.__name__)

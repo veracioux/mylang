@@ -4,7 +4,6 @@ import inspect
 from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
 
 from ._utils import (
-    Special,
     mylang_obj_to_python,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
@@ -39,11 +38,9 @@ class Object:
         else:
             self._m_init_(Args.from_dict(python_dict_from_args_kwargs(*args, **kwargs)))
 
-    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         assert isinstance(args, Args)
 
-    @Special._m_setattr_
     def _m_setattr_(self, key: "Object", value: "Object", /):
         assert False
 
@@ -58,16 +55,15 @@ class Object:
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
     def __str__(self):
-        if hasattr(self, Special._m_str_.name):
+        if hasattr(self, "_m_str_"):
             return self._m_str_().value
-        elif isinstance(self, TypedObject) and hasattr(self.type_, Special._m_str_.name):
+        elif isinstance(self, TypedObject) and hasattr(self.type_, "_m_str_"):
             return self.type_._m_str_(self).value
-        elif hasattr(self, Special._m_repr_.name):
+        elif hasattr(self, "_m_repr_"):
             return str(self._m_repr_())
         else:
             raise NotImplementedError("__str__ is not implemented for this object")
 
-    @Special._m_repr_
     def _m_repr_(self) -> "String":
         """Return a string representation of the object that will be used in the mylang context."""
         raise NotImplementedError("repr is not implemented for this object")
@@ -106,7 +102,7 @@ class IncompleteExpression(abc.ABC):
 
         dict_attributes = (
             "__dict__",
-            *((Special._m_dict_.name,) if hasattr(obj, Special._m_dict_.name) else ()),
+            *(("_m_dict_",) if hasattr(obj, "_m_dict_") else ()),
         )
 
         is_obj_copied = False
@@ -138,8 +134,8 @@ class IncompleteExpression(abc.ABC):
 
         # Iterate through all items in _m_array_ and evaluate all incomplete
         # expressions in them, recursively
-        if hasattr(obj, Special._m_array_.name):
-            arr = getattr(obj, Special._m_array_.name)
+        if hasattr(obj, "_m_array_"):
+            arr = obj._m_array_
             is_array_copied = False
             for i, item in enumerate(arr):
                 new_item = IncompleteExpression.evaluate_all_in_object(item)
@@ -151,7 +147,7 @@ class IncompleteExpression(abc.ABC):
                         obj = copy.copy(obj)
                         is_obj_copied = True
                     arr[i] = new_item
-                    setattr(obj, Special._m_array_.name, arr)
+                    setattr(obj, "_m_array_", arr)
 
         return obj
 
@@ -213,7 +209,6 @@ class TypedObject(Object):
         self._m_dict_ = {}
         super().__init__(type_)
 
-    @Special._m_repr_
     def _m_repr_(self):
         # TODO: Improve
         from .complex import String
@@ -223,7 +218,6 @@ class TypedObject(Object):
 class Array(Object, Generic[T]):
     """An object that contains a sequence of objects."""
 
-    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
         assert args.is_positional_only()
@@ -234,7 +228,7 @@ class Array(Object, Generic[T]):
     def from_iterable(cls, source: Iterable[T], /):
         obj = cls.__new__(cls)
         obj.__init__()
-        obj._m_array_: list[T] = Special._m_array_([python_obj_to_mylang(x) for x in source])
+        obj._m_array_: list[T] = [python_obj_to_mylang(x) for x in source]
         return obj
 
     def __eq__(self, other):
@@ -269,7 +263,6 @@ class Array(Object, Generic[T]):
     def __repr__(self):
         return f"{self.__class__.__name__}.from_iterable({self._m_array_!r})"
 
-    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -284,12 +277,10 @@ class Array(Object, Generic[T]):
 class Dict(Object):
     """An object that contains a mapping of keys to values."""
 
-    @Special._m_init_
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
         self._m_dict_: dict[Object, Object] = args._m_dict_.copy()
 
-    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 
@@ -307,34 +298,32 @@ class Dict(Object):
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
-        obj._m_dict_ = Special._m_dict_(
-            {
-                python_obj_to_mylang(k): python_obj_to_mylang(v)
-                for k, v in source.items()
-            }
-        )
+        obj._m_dict_ = {
+            python_obj_to_mylang(k): python_obj_to_mylang(v)
+            for k, v in source.items()
+        }
         return obj
 
     def __setattr__(self, name: str, value: Any, /) -> None:
-        if name == Special._m_dict_.name:
+        if name == "_m_dict_":
             super().__setattr__(name, value)
         else:
             from .complex import String
 
             try:
-                getattr(self, Special._m_dict_.name)
+                getattr(self, "_m_dict_")
             except AttributeError:
-                super().__setattr__(Special._m_dict_.name, {})
+                super().__setattr__("_m_dict_", {})
             self._m_dict_[String(name)] = python_obj_to_mylang(value)
 
     def __getattribute__(self, name: str, /) -> Any:
-        if name == Special._m_dict_.name:
-            return super().__getattribute__(Special._m_dict_.name)
+        if name == "_m_dict_":
+            return super().__getattribute__("_m_dict_")
         else:
             from .complex import String
 
             key = String(name)
-            if hasattr(self, Special._m_dict_.name) and key in self._m_dict_:
+            if hasattr(self, "_m_dict_") and key in self._m_dict_:
                 return self._m_dict_[key]
             else:
                 return super().__getattribute__(name)
@@ -429,7 +418,6 @@ class Args(Dict):
         positional = (*other, *self[:])
         return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict())
 
-    @Special._m_repr_
     def _m_repr_(self):
         from .complex import String
 

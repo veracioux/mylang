@@ -3,7 +3,6 @@ import pytest
 from mylang.stdlib.core import ref, return_
 from mylang.stdlib.core._context import LocalsDict, StackFrame, current_stack_frame
 from mylang.stdlib.core._utils import (
-    Special,
     function_defined_as_class,
     currently_called_func,
     FunctionAsClass,
@@ -151,7 +150,6 @@ class Test_call:
         _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
         @classmethod
-        @Special._m_classcall_
         def _m_classcall_(cls, args: Args, /):
             return Array.from_iterable(
                 ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]

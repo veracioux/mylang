@@ -1,11 +1,10 @@
-from typing import Any, Literal
+from typing import Any
 
 from .func import StatementList, fun, get
 from . import undefined
 from ._context import current_stack_frame, LocalsDict
 from ._utils import (
     FunctionAsClass,
-    Special,
     expose,
     expose_class_attr,
     function_defined_as_class,
@@ -29,7 +28,7 @@ class _Symbols:
 @function_defined_as_class
 @expose_class_attr("init")
 class class_(Object, FunctionAsClass):
-    _m_name_ = Special._m_name_("class")
+    _m_name_ = "class"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
     _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
@@ -67,7 +66,6 @@ class class_(Object, FunctionAsClass):
         })
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args, /):
         """Create a class."""
         assert args.is_positional_only(), "class arguments must be positional only"
@@ -80,7 +78,6 @@ class class_(Object, FunctionAsClass):
 
         return created_class
 
-    @Special._m_call_
     def _m_call_(self, args: Args, /) -> TypedObject:
         """Initialize an instance of the class."""
         # TODO: Define constructor and call it
@@ -124,7 +121,6 @@ class BoundMethod(fun):
         super().__init__(func.name, func.parameters, func.body)
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /) -> Any:
         bound_to = args[0]
         func = args[1]
@@ -132,7 +128,6 @@ class BoundMethod(fun):
         obj.__init__(bound_to, func)
         return obj
 
-    @Special._m_call_
     def _m_call_(self, args: Args, /) -> Any:
         # Inject `self` into the function's lexical scope
         current_stack_frame.get().locals["self"] = self.self

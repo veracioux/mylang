@@ -3,12 +3,12 @@ import dataclasses
 from typing import NamedTuple
 
 from .func import StatementList
-from ._utils import Special, expose, function_defined_as_class, FunctionAsClass, issubclass_
+from ._utils import expose, function_defined_as_class, FunctionAsClass, issubclass_
 from .base import Object, Args
 from .primitive import undefined
 from .complex import String
 from .error import Error, ErrorCarrier
-from ._context import CatchSpec, current_stack_frame
+from ._context import CatchSpec
 
 
 class _Symbols:
@@ -26,14 +26,13 @@ class _LoopData:
 @expose
 @function_defined_as_class
 class if_(Object, FunctionAsClass):
-    _m_name_ = Special._m_name_("if")
+    _m_name_ = "if"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     class __IfBlockData(NamedTuple):
         modified_statement_list: StatementList
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args, /):
         from .func import ref
 
@@ -96,7 +95,6 @@ class if_(Object, FunctionAsClass):
         _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
         @classmethod
-        @Special._m_classcall_
         def _m_classcall_(cls, args: Args, /):
             assert len(args) == 1, "if requires exactly 1 argument"
             assert isinstance(
@@ -108,11 +106,10 @@ class if_(Object, FunctionAsClass):
 @expose
 @function_defined_as_class
 class return_(Object, FunctionAsClass):
-    _m_name_ = Special._m_name_("return")
+    _m_name_ = "return"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         # TODO: Make sure return skips execution of remaining statements
         # TODO: Also check that args are positional
@@ -133,7 +130,6 @@ class loop(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         assert len(args) == 1, "loop requires exactly one argument"
         assert isinstance(
@@ -162,7 +158,6 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     @abc.abstractmethod
     def _m_classcall_(cls, args: Args, /): ...
 
@@ -173,17 +168,16 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
         )
         assert (
             loop_data is not None
-        ), f"{getattr(cls, Special._m_name_.name)} statement not inside a loop"
+        ), f"{cls._m_name_} statement not inside a loop"
         return loop_data
 
 
 @expose
 @function_defined_as_class
 class while_(_LoopControlFunction):
-    _m_name_ = Special._m_name_("while")
+    _m_name_ = "while"
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         assert len(args) == 1, "while requires exactly 1 argument"
         condition = args[0]
@@ -200,11 +194,10 @@ class while_(_LoopControlFunction):
 class break_(_LoopControlFunction):
     """Break out of a loop."""
 
-    _m_name_ = Special._m_name_("break")
+    _m_name_ = "break"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         if len(args) != 0:
             raise ValueError("break does not take any arguments")
@@ -217,11 +210,10 @@ class break_(_LoopControlFunction):
 @expose
 @function_defined_as_class
 class continue_(_LoopControlFunction):
-    _m_name_ = Special._m_name_("continue")
+    _m_name_ = "continue"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         if len(args) != 0:
             raise ValueError("continue does not take any arguments")
@@ -240,7 +232,6 @@ class ignore(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         return undefined
 
@@ -248,12 +239,11 @@ class ignore(Object, FunctionAsClass):
 @expose
 @function_defined_as_class
 class try_(Object, FunctionAsClass):
-    _m_name_ = Special._m_name_("try")
+    _m_name_ = "try"
 
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         assert len(args) >= 1 and isinstance(body := args[0], StatementList), "try's first argument must be a StatementList"
         assert len(args) >= 3, "try requires 'catch' and a catch body"
@@ -281,7 +271,6 @@ class throw(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         if len(args) == 0:
             raise Error()
