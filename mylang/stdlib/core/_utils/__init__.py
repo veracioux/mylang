@@ -500,3 +500,18 @@ def issubclass_(obj: "Object", type_: Union[type, "class_"]):
         return any(issubclass_(base, type_) for base in obj.bases)
     else:
         return False
+
+def getname(obj: "Object"):
+    """Get the name of the object in the context of MyLang, if any."""
+    from ..complex import String
+    from ..func import fun
+
+    if isinstance(obj, fun):
+        return obj.name
+    if hasattr(obj, Special._m_name_.name):
+        return String(getattr(obj, Special._m_name_.name))
+    elif hasattr(obj, "__name__"):
+        from ..complex import String
+        return String(obj.__name__)
+    else:
+        return None

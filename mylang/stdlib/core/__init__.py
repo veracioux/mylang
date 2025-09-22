@@ -21,7 +21,7 @@ from .base import (
     PostfixOperation,
     BinaryOperation,
 )
-from .func import fun, call, set_, get, use, ref, op
+from .func import fun, call, set_, get, use, ref, op, export
 from .flow import if_, return_, loop, while_, break_, continue_, throw, try_
 from .class_ import class_
 from .error import Error, error
@@ -67,4 +67,5 @@ __all__ = (
     "error",
     "throw",
     "try_",
+    "export",
 )

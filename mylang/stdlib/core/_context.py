@@ -88,7 +88,7 @@ class LexicalScope:
         self.parent = parent
 
         # TODO: Move to StackFrame
-        self.custom_data = {}
+        self.custom_data: dict[Any, Any] = {}
         """A dictionary for storing custom data related to this lexical scope.
 
         Useful for context flow statements to communicate with each other.

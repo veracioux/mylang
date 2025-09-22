@@ -156,3 +156,16 @@ Caught error of type Error with message err msg
 Caught error of type MyError with message my error
     """.strip()
     assert captured.err == ""
+
+
+def test_use(capsys: CaptureFixture[str]):
+    # TODO: Remove this chdir hack by implementing proper module search path
+    os.chdir(os.path.dirname(__file__))
+    execute_module("use_importer.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+Importing use_importee.my
+Imported from use_importee: ('a'=1, 'xyz'={fun 'xyz'})
+""".strip()
+    assert captured.err == ""

@@ -1,13 +1,10 @@
 import contextlib
-import os
-from types import ModuleType
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
 from .error import Error, ErrorCarrier
 
 from ._context import (
     CatchSpec,
-    LocalsDict,
     current_stack_frame,
     nested_stack_frame,
     LexicalScope,
@@ -19,7 +16,7 @@ from ._utils import (
     expose,
     function_defined_as_class,
     getattr_,
-    is_attr_exposed,
+    getname,
     isinstance_,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
@@ -34,6 +31,11 @@ __all__ = ("fun", "call", "get", "set_")
 
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
+
+
+class _Symbols:
+    CURRENT_EXPORT = type("CURRENT_EXPORT", (object,), {})
+    """The object that will be exported from the current module."""
 
 
 @expose
@@ -89,7 +91,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
 
     @Special._m_repr_
     def _m_repr_(self):
-        return String(f"fun {self.name!r}")
+        return String(f"{{fun {self.name.value!r}}}")
 
 
 @expose
@@ -298,6 +300,7 @@ class use(Object, FunctionAsClass):
     @Special._m_classcall_
     def _m_classcall_(cls, args: Args, /):
         from .complex import String
+        from .primitive import undefined
 
         # TODO: Generalize validation based on __init__ function signature
 
@@ -374,9 +377,8 @@ class use(Object, FunctionAsClass):
                 exported_value = stack_frame.return_value
             else:
                 # TODO: Maybe wrap in a module type?
-                # TODO: Only export attributes called with export
                 # TODO: Use identity instead of hashing dict
-                exported_value = Dict.from_dict(stack_frame.locals.dict())
+                exported_value = stack_frame.lexical_scope.custom_data.pop(_Symbols.CURRENT_EXPORT, Dict())
 
         return exported_value
 
@@ -532,3 +534,34 @@ class op(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Validate args
         return op.operators[str(args[0])](*args[1:])
+
+
+@expose
+@function_defined_as_class
+class export(Object, FunctionAsClass):
+    """Marker class to indicate that an attribute should be exported from a module."""
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
+
+    def __init__(self, obj: Object):
+        self.obj = obj
+
+    @classmethod
+    @Special._m_classcall_
+    def _m_classcall_(self, args, /):
+        positional = args[:]
+        keyed = args.keyed_dict()
+
+        lexical_scope = current_stack_frame.get().lexical_scope
+
+        container_of_exports = lexical_scope.custom_data.get(_Symbols.CURRENT_EXPORT, None)
+        if container_of_exports is None:
+            container_of_exports = Dict()
+            lexical_scope.custom_data[_Symbols.CURRENT_EXPORT] = container_of_exports
+
+        for obj in positional:
+            name = getname(obj)
+            assert name is not None, f"Cannot export object {obj!r} as a positional argument without a name"
+            container_of_exports[name] = obj
+
+        for key, obj in keyed.items():
+            container_of_exports[key] = obj

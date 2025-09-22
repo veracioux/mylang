@@ -1,0 +1,10 @@
+echo Importing "use_importee.my"
+
+export a=1
+
+export {
+    fun xyz (
+       blah blah
+       blah blah
+    )
+}
