@@ -21,16 +21,12 @@ def main():
     if input_file_data:
         from mylang.stdlib import builtins_
 
-        # TODO: Use with to clean up stack frame
-        current_stack_frame.set(
-            StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get())
-        )
-
         tree = parser.parse(input_file_data, start=STATEMENT_LIST)
         # TODO: Remove
         print("Syntax tree:\n", tree.pretty())
-        statement_list: StatementList = Transformer().transform(tree)
-        statement_list.execute()
+        with StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()):
+            statement_list: StatementList = Transformer().transform(tree)
+            statement_list.execute()
     else:
         repl()
 
