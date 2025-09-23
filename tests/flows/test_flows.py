@@ -118,6 +118,20 @@ after 3rd loop $x is 4
     assert captured.err == ""
 
 
+def test_for(capsys: CaptureFixture[str]):
+    execute_module("for.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
+$x is 0
+$x is 1
+$x is 2
+$x is 3
+$x is 4
+    """.strip()
+    assert captured.err == ""
+
+
 def test_path_getset(capsys: CaptureFixture[str]):
     execute_module("path_getset.my")
     captured = capsys.readouterr()

@@ -453,6 +453,7 @@ def issubclass_(obj: "Object", type_: Union[type, "class_"]):
     else:
         return False
 
+
 def getname(obj: "Object"):
     """Get the name of the object in the context of MyLang, if any."""
     from ..complex import String
@@ -467,3 +468,11 @@ def getname(obj: "Object"):
         return String(obj.__name__)
     else:
         return None
+
+
+def iter_(obj: "Object"):
+    """Get an iterator for the object in the context of MyLang."""
+    if hasattr(obj, "__iter__"):
+        return iter(obj)
+    else:
+        raise NotImplementedError(f"Object {obj} is not iterable in MyLang")

@@ -1,7 +1,7 @@
 import abc
 import copy
 import inspect
-from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, final, overload
+from typing import TYPE_CHECKING, Any, Generic, Iterable, Optional, TypeVar, final, overload
 
 from ._utils import (
     mylang_obj_to_python,
@@ -18,6 +18,9 @@ if TYPE_CHECKING:
 
 
 class Object:
+    _m_name_: Optional[str]
+    _m_dict_: dict["Object", "Object"]
+
     @overload
     def __init__(self, *args: "Object", **kwargs: "Object"): ...
 

@@ -22,7 +22,7 @@ from .base import (
     BinaryOperation,
 )
 from .func import fun, call, set_, get, use, ref, op, export
-from .flow import if_, return_, loop, while_, break_, continue_, throw, try_
+from .flow import if_, return_, loop, while_, break_, continue_, throw, try_, for_
 from .class_ import class_
 from .error import Error, error
 
@@ -54,6 +54,7 @@ __all__ = (
     "ref",
     "if_",
     "loop",
+    "for_",
     "while_",
     "break_",
     "continue_",

@@ -154,7 +154,32 @@ class loop(Object, FunctionAsClass):
                 copied_statement_list.aborted = False
 
 
+@expose
+@function_defined_as_class
+class for_(Object, FunctionAsClass):
+    _m_name_ = "for"
+    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
+
+    @classmethod
+    def _m_classcall_(cls, args: Args, /):
+        from ._context import current_stack_frame
+        from ._utils import iter_
+        assert args.is_positional_only() and len(args) == 4, "for requires exactly 4 positional arguments"
+        loop_var, in_, iterable, statement_list = args[:]
+        assert in_ == String("in"), "The second argument to for must be 'in'"
+        assert isinstance(statement_list, StatementList), "The last argument to for must be a StatementList"
+
+        stack_frame = current_stack_frame.get()
+        stack_frame.set_parent_lexical_scope(stack_frame.parent.lexical_scope)
+        for value in iter_(iterable):
+            stack_frame.locals[loop_var] = value
+            statement_list.execute()
+
+        return undefined
+
+
 class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
+    """Base class for loop control functions like while, break, etc."""
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
