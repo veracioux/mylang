@@ -21,7 +21,7 @@ from ._utils import (
     python_obj_to_mylang,
     set_contextvar,
     FunctionAsClass,
-    populate_locals_for_callable,
+    populate_locals_for_callable, expose_instance_attr,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
@@ -39,6 +39,7 @@ class _Symbols:
 
 @expose
 @function_defined_as_class
+@expose_instance_attr("name", "parameters", "body")
 class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
     _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True

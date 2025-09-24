@@ -1,13 +1,20 @@
 import abc
+import functools
 from contextlib import contextmanager
 from contextvars import ContextVar
-import functools
 from types import FunctionType, MethodType, ModuleType
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Generic, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 if TYPE_CHECKING:
-    from ..base import Object, Args
     from .._context import LocalsDict
+    from ..base import Args, Object
     from ..class_ import class_
 
 
@@ -62,9 +69,9 @@ def python_dict_from_args_kwargs(*args, **kwargs):
 
 
 def mylang_obj_to_python(obj: "Object"):
+    from ..base import Args, Dict, Object
     from ..complex import String
-    from ..base import Dict, Args, Object
-    from ..primitive import Scalar, Bool, undefined, null
+    from ..primitive import Bool, Scalar, null, undefined
 
     if isinstance(obj, String):
         return obj.value
@@ -271,19 +278,31 @@ def expose(obj: TypeObject):
     return obj
 
 
-def expose_class_attr(attr_name: str):
+def expose_class_attr(*attr_names: str):
     """Decorator to expose a class attribute in the context of MyLang."""
 
     def decorator(cls):
-        _exposed_class_attrs.add((cls, attr_name))
+        for attr_name in attr_names:
+            _exposed_class_attrs.add((cls, attr_name))
         return cls
 
     return decorator
 
 
-def expose_obj_attr(obj: Any, attr_name: str):
-    """Expose an instance attribute in the context of MyLang."""
-    _exposed_obj_attrs.add((obj, attr_name))
+def expose_instance_attr(*attr_names: str):
+    """Decorator to expose attributes on all instances of class `cls` in the context of MyLang."""
+    def decorator(cls):
+        for attr_name in attr_names:
+            _exposed_instance_attrs.add((cls, attr_name))
+        return cls
+
+    return decorator
+
+
+def expose_obj_attr(obj: "Object", *attr_names: str):
+    """Expose an attribute on an object in the context of MyLang."""
+    for attr_name in attr_names:
+        _exposed_obj_attrs.add((obj, attr_name))
 
 
 def is_exposed(obj: "Object"):
@@ -293,7 +312,7 @@ def is_exposed(obj: "Object"):
 
 def is_attr_exposed(obj: "Object", attr_name: str):
     """Check if the given attribute on obj is exposed outside of Python."""
-    if (obj, attr_name) in _exposed_obj_attrs:
+    if (obj, attr_name) in _exposed_obj_attrs or (type(obj), attr_name) in _exposed_instance_attrs:
         return True
 
     type_ = obj if isinstance(obj, type) else type(obj)
@@ -335,7 +354,7 @@ def only_callable_by_call_decorator(func):
 
 def _python_func_to_mylang(func: FunctionType) -> "Object":
     """Convert a Python function to a MyLang function."""
-    from ..base import Object, Args
+    from ..base import Args, Object
     from ..func import StatementList
 
     @function_defined_as_class
@@ -378,7 +397,7 @@ def populate_locals_for_callable(
 # TODO: Implement python-like getattr attribute lookup
 def getattr_(obj: "Object", key: "Object"):
     from .._context import LexicalScope, LocalsDict
-    from ..base import TypedObject, Dict, Object
+    from ..base import Dict, Object, TypedObject
     from ..complex import String
     from .types import PythonModuleWrapper
 
@@ -436,8 +455,8 @@ def isinstance_(obj: "Object", type_: type):
 
 def issubclass_(obj: "Object", type_: Union[type, "class_"]):
     """Subclass check in the context of MyLang."""
-    from ..class_ import class_
     from ..base import Object
+    from ..class_ import class_
 
     if type_ is Object:
         return True
