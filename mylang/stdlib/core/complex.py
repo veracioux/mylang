@@ -23,6 +23,9 @@ class String(Object):
     def _m_repr_(self):
         return String(repr(self.value))
 
+    def _m_str_(self):
+        return self
+
     def __eq__(self, other: Any):
         return (isinstance(other, self.__class__) and self.value == other.value) or (
             isinstance(other, str) and self.value == other
@@ -45,7 +48,10 @@ class Path(Object):
     def _m_init_(self, args: Args, /):
         assert args.is_positional_only, "Path takes only positional arguments"
         assert len(args) > 1, "Path must have at least two parts"
-        self.parts: tuple[Union[String, Dots]] = tuple(args[:])
+        self.parts: tuple[Object] = tuple(args[:])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({', '.join(repr(part) for part in self.parts)})"
 
     def _m_repr_(self):
         string = ".".join(
@@ -57,6 +63,9 @@ class Path(Object):
         )
 
         return String(string[slice_])
+
+    def _m_str_(self):
+        return String(".".join(part._m_str_().value for part in self.parts))
 
 
 class Dots(Object):

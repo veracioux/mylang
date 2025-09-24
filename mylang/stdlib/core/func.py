@@ -1,7 +1,7 @@
 import contextlib
+import os
+import pathlib
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
-
-from .error import Error, ErrorCarrier
 
 from ._context import (
     CatchSpec,
@@ -25,6 +25,7 @@ from ._utils import (
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
+from .error import Error, ErrorCarrier
 
 __all__ = ("fun", "call", "get", "set_")
 
@@ -294,7 +295,6 @@ class use(Object, FunctionAsClass):
     @classmethod
     def _m_classcall_(cls, args: Args, /):
         from .complex import String
-        from .primitive import undefined
 
         # TODO: Generalize validation based on __init__ function signature
 
@@ -357,7 +357,7 @@ class use(Object, FunctionAsClass):
         tree = parser.parse(code, start=STATEMENT_LIST)
 
         # Enter a nested context, execute the module and obtain its exported
-        # value The exported value is either a dict of the module's locals or a
+        # value. The exported value is either a dict of the module's locals or a
         # specific return value if return was called from within.
         exported_value: Object
 
@@ -375,6 +375,12 @@ class use(Object, FunctionAsClass):
                 exported_value = stack_frame.lexical_scope.custom_data.pop(_Symbols.CURRENT_EXPORT, Dict())
 
         return exported_value
+
+    @classmethod
+    def _load_mylang_file(cls, path: str):
+        with open(path, "r") as f:
+            code = f.read()
+        return cls._load_mylang_module(code)
 
     class loaders:
         """Contains delegates that are used based on the type of source."""
@@ -394,12 +400,22 @@ class use(Object, FunctionAsClass):
                 if spec:
                     return cls.std(source)
                 else:
+                    path = cls._get_mylang_module_in_stdlib(source)
+                    if path.is_file():
+                        return cls.std(source)
                     return cls.third_party(source)
 
             @classmethod
             def std(cls, source: Union[String, Path]) -> Object:
                 import importlib
-                module = importlib.import_module(f"..{source}", package=__package__)
+                try:
+                    module = importlib.import_module(f"..{source}", package=__package__)
+                except ModuleNotFoundError as e:
+                    path = cls._get_mylang_module_in_stdlib(source)
+                    if path.is_file:
+                        return use._load_mylang_file(path)
+                    assert False, f"Standard library module {source} not found."
+
                 return python_obj_to_mylang(module)
 
             @classmethod
@@ -408,9 +424,21 @@ class use(Object, FunctionAsClass):
                     raise NotImplementedError(
                         "Third party modules can only be imported by String for now"
                     )
-                with open(source.value + ".my", "r") as f:
-                    code = f.read()
-                return use._load_mylang_module(code)
+                if isinstance(source, String):
+                    fpath = source.value + ".my"
+                else:
+                    fpath = os.path.join(*(part._m_str_().value for part in source.parts)) + ".my"
+                return use._load_mylang_file(fpath)
+
+            @classmethod
+            def _get_mylang_module_in_stdlib(cls, source: Union[String, Path]) -> pathlib.Path:
+                stdlib_root = pathlib.Path(__file__).parent.parent
+                if isinstance(source, Path):
+                    subpath = os.path.join(*(part._m_str_().value for part in source.parts)) + ".my"
+                else:
+                    subpath = source.value + ".my"
+
+                return stdlib_root / subpath
 
 
 class StatementList(Array[Args]):
