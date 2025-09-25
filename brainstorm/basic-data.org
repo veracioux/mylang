@@ -1,0 +1,91 @@
+#+TITLE: Basic data structures
+
+* The usual data structures
+#+begin_src bash
+  array = (a b c d e)
+  array = (a, b, c, d)
+  array = (a,) # comma is mandatory, otherwise would be treated as a parenthesized expression (inspired by Python's tuple syntax)
+  array = ()
+  array = (
+      a, # comma is mandatory, otherwise would be treated as ExecutionBlock
+  )
+
+  dict = {a=1 b=2 c=3}
+  dict = {a=1}
+  dict = {
+      a=1, # comma is mandatory, otherwise would be treated as ExecutionBlock
+  }
+  dict = {}
+#+end_src
+* Statement lists
+The aim is for MyLang to be homoiconic, meaning that code is represented as
+data. That is why a statement list is represented by the class =StatementList=.
+#+begin_src bash
+  # Statement list must have at least one newline or semicolon, otherwise it could
+  # be treated as one of the other constructs.
+  statement_list = (
+      x = 1
+      y = $x + 2
+      echo $y
+  )
+  statement_list = (
+      a
+  )
+  statement_list = (a;)
+  statement_list = (
+      a b; c d
+  )
+  statement_list = (
+      a=1
+  )
+#+end_src
+* Execution blocks
+Execution blocks are represented by the class =ExecutionBlock=. They are special
+statement lists, that are executed immediately when evaluated.
+* Args
+Args are a special structure that can hold positional and keyed arguments, or
+only one of those kinds. They can be considered as a combination of a tuple and
+a dict. In mylang, args are a first-class citizen, meaning they are constructed
+as instances of =Args=. Constructs that accept arguments are designed to treat
+instances of the =Args= class differently - whenever they encounter an =Args=
+instance, they unpack it and use its contents as if they were provided directly.
+
+Example:
+
+#+begin_src bash
+  args = {Args 1, 2, a=3, b=4}
+
+  myfunc $args
+#+end_src
+
+will behave exactly as:
+
+#+begin_src bash
+  myfunc 1, 2, a=3, b=4
+#+end_src
+** Syntax
+#+begin_src bash
+  a # Single positional argument
+  a b c # Two positional arguments
+  a, $x == 1, c # Commas are used for disambiguation
+  a=1 b=2 c=3 # keyed arguments
+  0 1 a=A b=B c=C # Positional arguments can be mixed with keyed arguments
+
+  0 1, a=A b=B c=C # Commas can be used for disambiguation
+#+end_src
+** WrappedArgs
+WrappedArgs are a special kind of =Args= that can hold positional or keyed
+arguments, just like regular =Args=, but won't be unpacked automatically.
+*** Syntax
+Syntax is the same as for =Args=, but must be wrapped in parentheses:
+#+begin_src bash
+  (a,) # Single positional argument
+  (a b c) # Two positional arguments
+  (a, $x == 1, c) # Commas are used for disambiguation
+  (a=1 b=2 c=3) # keyed arguments
+  (0 1 a=A b=B c=C) # Positional arguments can be mixed with keyed arguments
+
+  (0 1, a=A b=B c=C) # Commas can be used for disambiguation
+
+  {WrappedArgs a, b, c}
+#+end_src
