@@ -68,142 +68,96 @@ class TestPrimitive:
 class TestAssignment:
     def test_parse_assignment(self):
         t = parser.parse("a=1", start="assignment")
-        assert t.data == "assignment"
-        assert len(t.children) == 2
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].type == "SIGNED_NUMBER"
-        assert t.children[1].value == "1"
+        assert t.pretty().strip() == """
+assignment
+  a
+  1
+""".strip()
 
     def test_parse_assignment_spaced(self):
         t = parser.parse('"a" = 1', start="assignment")
-        assert t.data == "assignment"
-        assert len(t.children) == 2
-
-        assert t.children[0].type == "ESCAPED_STRING"
-        assert t.children[0].value == '"a"'
+        assert t.pretty().strip() == """
+assignment
+  "a"
+  1
+""".strip()
 
     def test_parse_assignment_complex_lvalue(self):
         t = parser.parse("(a b) = 1", start="assignment")
-        assert t.data == "assignment"
-        assert len(t.children) == 2
-
-        assert t.children[0].data == "dict"
-        assert len(t.children[0].children) == 2
-
-        assert t.children[0].children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].children[0].value == "a"
-
-        assert t.children[0].children[1].type == "UNQUOTED_STRING"
-        assert t.children[0].children[1].value == "b"
+        assert t.pretty().strip() == """
+assignment
+  dict
+    a
+    b
+  1
+""".strip()
 
 
 class TestArgs:
     def test_parse_args_positional_single(self):
         t = parser.parse("a,", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 1
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
+        assert t.pretty().strip() == """
+args\ta
+""".strip()
 
     def test_parse_args_positional_multiple(self):
         t = parser.parse("a b", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 2
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].type == "UNQUOTED_STRING"
-        assert t.children[1].value == "b"
+        assert t.pretty().strip() == """
+args
+  a
+  b
+""".strip()
 
     def test_parse_args_positional_mixed_commas(self):
         t = parser.parse("a b, c", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 3
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].type == "UNQUOTED_STRING"
-        assert t.children[1].value == "b"
-
-        assert t.children[2].type == "UNQUOTED_STRING"
-        assert t.children[2].value == "c"
+        assert t.pretty().strip() == """
+args
+  a
+  b
+  c
+""".strip()
 
     def test_parse_args_keyed_single(self):
         t = parser.parse("a=1", start="args")
-
-        assert t.data == "args"
-        assert len(t.children) == 1
-
-        assert t.children[0].data == "assignment"
-        assert len(t.children[0].children) == 2
-
-        assert t.children[0].children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].children[0].value == "a"
-
-        assert t.children[0].children[1].type == "SIGNED_NUMBER"
-        assert t.children[0].children[1].value == "1"
+        assert t.pretty().strip() == """
+args
+  assignment
+    a
+    1
+""".strip()
 
     def test_parse_args_keyed_single_trailing_comma(self):
         t = parser.parse("a=1,", start="args")
-
-        assert t.data == "args"
-        assert len(t.children) == 1
-
-        assert t.children[0].data == "assignment"
-        assert len(t.children[0].children) == 2
-
-        assert t.children[0].children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].children[0].value == "a"
-
-        assert t.children[0].children[1].type == "SIGNED_NUMBER"
-        assert t.children[0].children[1].value == "1"
+        assert t.pretty().strip() == """
+args
+  assignment
+    a
+    1
+""".strip()
 
     def test_parse_args_positional_keyed(self):
         t = parser.parse("a b c=1 d=2", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 4
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].type == "UNQUOTED_STRING"
-        assert t.children[1].value == "b"
-
-        assert t.children[2].data == "assignment"
-        assert len(t.children[2].children) == 2
-        assert t.children[2].children[0].type == "UNQUOTED_STRING"
-        assert t.children[2].children[0].value == "c"
-        assert t.children[2].children[1].type == "SIGNED_NUMBER"
-        assert t.children[2].children[1].value == "1"
-
-        assert t.children[3].data == "assignment"
-        assert len(t.children[2].children) == 2
-        assert t.children[3].children[0].type == "UNQUOTED_STRING"
-        assert t.children[3].children[0].value == "d"
-        assert t.children[3].children[1].type == "SIGNED_NUMBER"
-        assert t.children[3].children[1].value == "2"
+        assert t.pretty().strip() == """
+args
+  a
+  b
+  assignment
+    c
+    1
+  assignment
+    d
+    2
+""".strip()
 
     def test_parse_args_positional_keyed_one_each(self):
         t = parser.parse("a c=1", start="args")
-        assert t.data == "args"
-        assert len(t.children) == 2
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].data == "assignment"
-        assert len(t.children[1].children) == 2
-
-        assert t.children[1].children[0].type == "UNQUOTED_STRING"
-        assert t.children[1].children[0].value == "c"
-
-        assert t.children[1].children[1].type == "SIGNED_NUMBER"
-        assert t.children[1].children[1].value == "1"
+        assert t.pretty().strip() == """
+args
+  a
+  assignment
+    c
+    1
+""".strip()
 
 
 class TestStatementList:
