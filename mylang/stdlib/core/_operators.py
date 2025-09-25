@@ -1,4 +1,4 @@
-from ._utils import python_obj_to_mylang
+from ._utils import isinstance_, python_obj_to_mylang
 from .base import Object, Args
 from .primitive import Bool
 
@@ -81,3 +81,8 @@ def ampersand(a):
 @_op("!")
 def logical_not(a):
     return Bool(not a)
+
+
+@_op(":?")
+def isinstance(a, b):
+    return Bool(isinstance_(a, b))

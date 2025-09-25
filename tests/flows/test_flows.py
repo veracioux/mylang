@@ -85,6 +85,8 @@ $x is 42
 0.3 * -4 is -1.2
 2e2 + 3 is 203.0
 1 + 2 + 3 is 6
+abc :? $String is true
+1 :? $String is false
     """.strip()
     assert captured.err == ""
 

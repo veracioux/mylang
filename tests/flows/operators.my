@@ -7,3 +7,6 @@ echo "1.5 - 4 is" 1.5-4
 echo "0.3 * -4 is" 0.3 * -4
 echo "2e2 + 3 is" 2e2 + 3
 echo "1 + 2 + 3 is" 1 + 2 + 3
+
+echo "abc :? $String is" (abc :? $String)
+echo "1 :? $String is" (1 :? $String)

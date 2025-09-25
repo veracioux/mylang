@@ -1,5 +1,7 @@
 import functools
-from typing import Any, Union
+from typing import Any
+
+from mylang.stdlib.core._utils import expose
 
 from .base import Args, Object
 
@@ -7,6 +9,7 @@ from .base import Args, Object
 __all__ = ("String", "Path")
 
 
+@expose
 class String(Object):
     # TODO: Use weak caching
     @functools.cache
