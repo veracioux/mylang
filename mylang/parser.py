@@ -5,13 +5,17 @@ from pathlib import Path
 __all__ = ("parser", "EXPRESSION", "STATEMENT_LIST")
 
 
+# TODO: Get rid of these constants
 EXPRESSION = "expression"
 STATEMENT_LIST = "statement_list"
 
 _start = [
     STATEMENT_LIST,
     EXPRESSION,
+    "execution_block",
     "args",
+    "array",
+    "wrapped_args",
     "assignment",
     "dict",
     "path",

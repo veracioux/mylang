@@ -1,5 +1,6 @@
+import pytest
+from lark import Tree, UnexpectedCharacters, UnexpectedEOF
 from mylang.parser import parser
-from lark import Tree
 
 _Tree_repr = Tree.__repr__
 
@@ -83,12 +84,17 @@ assignment
 """.strip()
 
     def test_parse_assignment_complex_lvalue(self):
-        t = parser.parse("(a b) = 1", start="assignment")
+        t = parser.parse("{a=1 b=2} = 1", start="assignment")
+        # assert t.pretty().strip() == """
         assert t.pretty().strip() == """
 assignment
   dict
-    a
-    b
+    assignment
+      a
+      1
+    assignment
+      b
+      2
   1
 """.strip()
 
@@ -160,35 +166,209 @@ args
 """.strip()
 
 
+class TestWrappedArgs:
+    def test_parse_wrapped_args_keyed_single(self):
+        t = parser.parse("(a=1)", start="wrapped_args")
+        assert t.pretty().strip() == """
+wrapped_args
+  assignment
+    a
+    1
+""".strip()
+
+    def test_parse_wrapped_args_mixed(self):
+        t = parser.parse("(0 1, a=A b=B c=C)", start="expression")
+        assert t.pretty().strip() == """
+wrapped_args
+  0
+  1
+  assignment
+    a
+    A
+  assignment
+    b
+    B
+  assignment
+    c
+    C
+""".strip()
+
+
 class TestStatementList:
     def test_parse_statement_list_sep_newline(self):
         t = parser.parse("a b\nc d", start="statement_list")
-        assert t.data == "statement_list"
-        assert len(t.children) == 2
+        assert t.pretty().strip() == """
+statement_list
+  args
+    a
+    b
+  args
+    c
+    d
+""".strip()
 
-        assert t.children[0].data == "args"
-        assert t.children[0].children[0].value == "a"
-        assert t.children[0].children[1].value == "b"
+    def test_parse_statement_list_sep_semicolon(self):
+        t = parser.parse("a b; c d", start="statement_list")
+        assert t.pretty().strip() == """
+statement_list
+  args
+    a
+    b
+  args
+    c
+    d
+""".strip()
 
-        assert t.children[1].data == "args"
-        assert t.children[1].children[0].value == "c"
-        assert t.children[1].children[1].value == "d"
+    def test_parse_statement_list_single_statement(self):
+        t = parser.parse("a=1;", start="statement_list")
+        assert t.pretty().strip() == """
+statement_list
+  args
+    assignment
+      a
+      1
+""".strip()
+
+    def test_does_not_parse_assignment(self):
+        with pytest.raises(UnexpectedEOF):
+            parser.parse("a=1", start="statement_list")
+
+
+# Implement tests for execution_block. Its grammar definition is this:
+# execution_block: "{" _WS* (statement_list | (_positional_args _keyed_args?)) _WS* "}"
+class TestExecutionBlock:
+    def test_parse_execution_block_statement_list(self):
+        t = parser.parse("{a b; c d}", start="execution_block")
+        assert t.pretty().strip() == """
+execution_block
+  statement_list
+    args
+      a
+      b
+    args
+      c
+      d
+""".strip()
+
+    def test_parse_execution_block_positional_args(self):
+        t = parser.parse("{a b}", start="execution_block")
+        assert t.pretty().strip() == """
+execution_block
+  execution_block_single_statement
+    a
+    b
+""".strip()
+
+    def test_parse_execution_block_only_assignments(self):
+        t = parser.parse("{a=1; b=2}", start="execution_block")
+        assert t.pretty().strip() == """
+execution_block
+  statement_list
+    args
+      assignment
+        a
+        1
+    args
+      assignment
+        b
+        2
+""".strip()
+
+
+class TestArray:
+    def test_parse_array_empty(self):
+        t = parser.parse("()", start="expression")
+        assert t.pretty().strip() == """
+array
+""".strip()
+
+    def test_parse_array_single_element(self):
+        t = parser.parse("(a,)", start="expression")
+        assert t.pretty().strip() == """
+array\ta
+""".strip()
+
+    def test_parse_array_multiple_elements(self):
+        t = parser.parse("(a, b, c, d)", start="expression")
+        assert t.pretty().strip() == """
+array
+  a
+  b
+  c
+  d
+""".strip()
+
+    def test_parse_array_multiple_elements_no_commas(self):
+        t = parser.parse("(a b c d)", start="expression")
+        assert t.pretty().strip() == """
+array
+  a
+  b
+  c
+  d
+""".strip()
+
+    def test_parse_array_multiline(self):
+        t = parser.parse("(\n    a,\n)", start="expression")
+        assert t.pretty().strip() == """
+array\ta
+""".strip()
+
+
+class TestDict:
+    def test_parse_dict_empty(self):
+        t = parser.parse("{}", start="expression")
+        assert t.pretty().strip() == """
+dict
+""".strip()
+
+    def test_parse_dict_single_pair(self):
+        t = parser.parse("{a=1}", start="expression")
+        assert t.pretty().strip() == """
+dict
+  assignment
+    a
+    1
+""".strip()
+
+    def test_parse_dict_multiple_pairs(self):
+        t = parser.parse("{a=1 b=2 c=3}", start="expression")
+        assert t.pretty().strip() == """
+dict
+  assignment
+    a
+    1
+  assignment
+    b
+    2
+  assignment
+    c
+    3
+""".strip()
+
+    def test_parse_dict_multiline(self):
+        t = parser.parse("{\n    a=1,\n}", start="expression")
+        assert t.pretty().strip() == """
+dict
+  assignment
+    a
+    1
+""".strip()
+
+    def test_do_not_parse_execution_block(self):
+        with pytest.raises(UnexpectedCharacters):
+            parser.parse("{\n    a=1\n}", start="dict")
 
 
 class TestPath:
     def test_parse_path_simple(self):
         t = parser.parse("a.b.c", start="path")
-        assert t.data == "path"
-        assert len(t.children) == 3
-
-        assert t.children[0].type == "UNQUOTED_STRING"
-        assert t.children[0].value == "a"
-
-        assert t.children[1].type == "UNQUOTED_STRING"
-        assert t.children[1].value == "b"
-
-        assert t.children[2].type == "UNQUOTED_STRING"
-        assert t.children[2].value == "c"
+        assert t.pretty().strip() == """
+path
+  a
+  b
+  c
+""".strip()
 
     def test_parse_path_dot_string(self):
         t = parser.parse('.a', start="path")
@@ -213,8 +393,8 @@ path
   a
   -1.2
   execution_block
-    statement_list	x
-  dict
+    execution_block_single_statement\tx
+  wrapped_args
     1
     assignment
       a
