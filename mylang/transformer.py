@@ -74,6 +74,13 @@ class Transformer(_Transformer):
     def execution_block(self, items: tuple[StatementList]):
         return ExecutionBlock.from_iterable(items[0])
 
+    def execution_block_single_statement(self, items: list[Object | Tree]):
+        return StatementList.from_iterable(
+            [
+                self.args(items)
+            ]
+        )
+
     def prefix_operation(self, items: tuple[Tree, Object]):
         return PrefixOperation(_operator_node_to_string(items[0]), items[1])
 
@@ -88,6 +95,19 @@ class Transformer(_Transformer):
 
     def path(self, items: list[Object]):
         return Path(Args(*items))
+
+    def module(self, items: tuple[StatementList | Args | Object]):
+        if not items:
+            return StatementList()
+        elif isinstance(items[0], Args):
+            return StatementList.from_iterable([items[0]])
+        elif isinstance(items[0], StatementList):
+            return items[0]
+        else:
+            return StatementList.from_iterable([Args(items[0])])
+
+    def wrapped_args(self, items: list[Object | Tree]):
+        raise NotImplementedError
 
 
 def _operator_node_to_string(operator: Tree):

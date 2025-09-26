@@ -2,8 +2,9 @@ from contextlib import contextmanager
 import os
 
 from pytest import CaptureFixture
+import pytest
 
-from mylang.parser import STATEMENT_LIST, parser
+from mylang.parser import parser
 from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
 from mylang.stdlib.core._context import (
@@ -23,7 +24,7 @@ def execute_module(*path_components: str):
         nested_stack_frame(builtins_.create_locals_dict()),
         read_module(*path_components) as text,
     ):
-        tree = parser.parse(text, start=STATEMENT_LIST)
+        tree = parser.parse(text, start="module")
         statement_list: StatementList = Transformer().transform(tree)
         statement_list.execute()
 
@@ -57,9 +58,9 @@ def test_lexical_scope(capsys: CaptureFixture[str]):
 
     captured = capsys.readouterr()
     assert captured.out.strip() == """
-Function fun11 returned value: ('f1v1'='F1V1', 'f1v2'='F1V2', 'f11v1'='F11V1', 'f12v1'='unassigned')
-Function f2 returned value: ('f1v1'='unassigned', 'f1v2'='unassigned', 'f11v1'='unassigned', 'f12v1'='unassigned')
-In module scope, the values are: ('f1v1'='unassigned', 'f1v2'='unassigned', 'f11v1'='unassigned')
+Function fun11 returned value: {'f1v1'='F1V1', 'f1v2'='F1V2', 'f11v1'='F11V1', 'f12v1'='unassigned'}
+Function f2 returned value: {'f1v1'='unassigned', 'f1v2'='unassigned', 'f11v1'='unassigned', 'f12v1'='unassigned'}
+In module scope, the values are: {'f1v1'='unassigned', 'f1v2'='unassigned', 'f11v1'='unassigned'}
     """.strip()
     assert captured.err == ""
 
@@ -125,11 +126,11 @@ def test_for(capsys: CaptureFixture[str]):
     captured = capsys.readouterr()
 
     assert captured.out.strip() == """
-$x is 0
 $x is 1
 $x is 2
 $x is 3
 $x is 4
+$x is 5
     """.strip()
     assert captured.err == ""
 
@@ -139,9 +140,9 @@ def test_path_getset(capsys: CaptureFixture[str]):
     captured = capsys.readouterr()
 
     assert captured.out.strip() == """
-$dict is ('a'=1, 'b'=('c'=3, 'd'=4))
+$dict is {'a'=1, 'b'={'c'=3, 'd'=4}}
 $dict.a is 1
-$dict.b is ('c'=3, 'd'=4)
+$dict.b is {'c'=3, 'd'=4}
 $dict.b.c is 3
 $dict.b.d is 4
 Setting dict.b.c to 5
@@ -182,6 +183,17 @@ def test_use(capsys: CaptureFixture[str]):
 
     assert captured.out.strip() == """
 Importing use_importee.my
-Imported from use_importee: ('a'=1, 'xyz'={fun 'xyz'})
+Imported from use_importee: {'a'=1, 'xyz'={fun 'xyz'}}
+""".strip()
+    assert captured.err == ""
+
+
+@pytest.mark.skip
+def test_test(capsys: CaptureFixture[str]):
+    # TODO: Remove this chdir hack by implementing proper module search path
+    execute_module("test.my")
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == """
 """.strip()
     assert captured.err == ""

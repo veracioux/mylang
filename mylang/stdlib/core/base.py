@@ -288,14 +288,14 @@ class Dict(Object):
         from .complex import String
 
         if len(self) == 0:
-            return String("()")
+            return String("{}")
 
         return String(
-            "("
+            "{"
             + ", ".join(
                 f"{k._m_repr_()}={v._m_repr_()}" for k, v in self._m_dict_.items()
             )
-            + ")"
+            + "}"
         )
 
     @classmethod

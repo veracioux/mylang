@@ -430,3 +430,33 @@ path
   c
   dots\t....
 """.strip()
+
+
+class TestModule:
+    def test_empty_module(self):
+        t = parser.parse("", start="module")
+        assert t.pretty().strip() == """
+module
+""".strip()
+
+    def test_module_as_statement_list(self):
+        t = parser.parse("a\n", start="module")
+        assert t.pretty().strip() == """
+module
+  statement_list\ta
+""".strip()
+
+    def test_module_with_single_statement(self):
+        t = parser.parse("a b", start="module")
+        assert t.pretty().strip() == """
+module
+  args
+    a
+    b
+""".strip()
+
+    def test_module_with_single_expression(self):
+        t = parser.parse("a", start="module")
+        assert t.pretty().strip() == """
+module\ta
+""".strip()

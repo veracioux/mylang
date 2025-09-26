@@ -1,6 +1,6 @@
 from mylang.repl import repl
 import sys
-from mylang.parser import STATEMENT_LIST, parser
+from mylang.parser import parser
 from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
 from mylang.stdlib.core._context import StackFrame, current_stack_frame
@@ -21,7 +21,7 @@ def main():
     if input_file_data:
         from mylang.stdlib import builtins_
 
-        tree = parser.parse(input_file_data, start=STATEMENT_LIST)
+        tree = parser.parse(input_file_data, start="module")
         # TODO: Remove
         print("Syntax tree:\n", tree.pretty())
         with StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()):

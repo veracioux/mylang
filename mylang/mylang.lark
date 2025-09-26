@@ -93,4 +93,6 @@ path: (dots? (_expression_not_path _DOTS)+ _expression_not_path dots?)
     | (dots _expression_not_path)
     | (_expression_not_path dots)
 
+module: _WS* (statement_list? | args | expression) _WS*
+
 %ignore SH_COMMENT

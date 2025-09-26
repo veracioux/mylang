@@ -2,16 +2,13 @@ from lark import Lark
 from pathlib import Path
 
 
-__all__ = ("parser", "EXPRESSION", "STATEMENT_LIST")
+__all__ = ("parser",)
 
-
-# TODO: Get rid of these constants
-EXPRESSION = "expression"
-STATEMENT_LIST = "statement_list"
 
 _start = [
-    STATEMENT_LIST,
-    EXPRESSION,
+    "module",
+    "statement_list",
+    "expression",
     "execution_block",
     "args",
     "array",

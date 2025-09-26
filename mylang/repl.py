@@ -4,7 +4,7 @@ import traceback
 
 from lark import ParseError, Tree, UnexpectedCharacters
 
-from mylang.parser import STATEMENT_LIST, parser
+from mylang.parser import parser
 from mylang.stdlib.core import Args, undefined, Object
 from mylang.stdlib.core.base import IncompleteExpression
 from mylang.transformer import Transformer
@@ -60,7 +60,7 @@ def repl():
             # Otherwise insert a newline
             try:
                 if buf.strip():
-                    tree = parser.parse(buf, start=STATEMENT_LIST)
+                    tree = parser.parse(buf + "\n", start="statement_list")
                     tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
                     print(
                         "  Syntax tree:",

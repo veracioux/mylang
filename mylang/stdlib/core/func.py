@@ -349,12 +349,12 @@ class use(Object, FunctionAsClass):
 
     @classmethod
     def _load_mylang_module(cls, code: str):
-        from ...parser import STATEMENT_LIST, parser
+        from ...parser import parser
         from ...transformer import Transformer
         from .. import builtins_
 
         # TODO: File extension
-        tree = parser.parse(code, start=STATEMENT_LIST)
+        tree = parser.parse(code, start="module")
 
         # Enter a nested context, execute the module and obtain its exported
         # value. The exported value is either a dict of the module's locals or a
