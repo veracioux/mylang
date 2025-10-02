@@ -12,6 +12,37 @@ from typing import (
     Union,
 )
 
+
+# Re-export
+__all__ = (
+    "expose",
+    "expose_obj_attr",
+    "expose_instance_attr",
+    "expose_class_attr",
+    "is_exposed",
+    "is_attr_exposed",
+    "iter_",
+    "python_obj_to_mylang",
+    "python_dict_from_args_kwargs",
+    "mylang_obj_to_python",
+    "function_defined_as_class",
+    "getattr_",
+    "isinstance_",
+    "issubclass_",
+    "getname",
+)
+
+
+from .exposure import (
+    expose,
+    expose_obj_attr,
+    expose_instance_attr,
+    expose_class_attr,
+    is_exposed,
+    is_attr_exposed,
+)
+
+
 if TYPE_CHECKING:
     from .._context import LocalsDict
     from ..base import Args, Object
@@ -47,6 +78,7 @@ def python_obj_to_mylang(obj):
         return Array.from_iterable(obj)
     elif isinstance(obj, ModuleType):
         from .types import PythonModuleWrapper
+
         return PythonModuleWrapper(obj)
     elif obj is None:
         from ..primitive import undefined
@@ -198,12 +230,14 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
         assert isinstance(cls, type) and issubclass(
             cls, FunctionAsClass
         ), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
-        assert not hasattr(cls, "_m_classcall_") or cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None, (
-            "Please explicitly set _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
-        )
-        assert not hasattr(cls, "_m_call_") or cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None, (
-            "Please explicitly set _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
-        )
+        assert (
+            not hasattr(cls, "_m_classcall_")
+            or cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
+        ), "Please explicitly set _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
+        assert (
+            not hasattr(cls, "_m_call_")
+            or cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
+        ), "Please explicitly set _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
 
         from ..complex import String
 
@@ -247,81 +281,6 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
 currently_called_func = ContextVar("currently_called_func", default=None)
 """Used by `only_callable_by_call_decorator` to ensure that a function can only
 be called from `call`."""
-
-
-_exposed_objects = set[int]()
-"""Holds all objects that are exposed outside of Python, in the context of MyLang."""
-
-
-_exposed_class_attrs = set[tuple[type, str]]()
-"""Holds all (class, attr_name) pairs that are exposed to MyLang."""
-
-
-_exposed_instance_attrs = set[tuple[type, str]]()
-"""Holds (class, attr_name) pairs. Each pair means that the attribute named
-`attr_name` should be exposed to MyLang for instances of `class` and its subclasses."""
-
-
-_exposed_obj_attrs = set[tuple[Any, str]]()
-"""Holds (obj, attr_name) pairs. Each pair means that the attribute named
-`attr_name` on object `obj` should be exposed to MyLang."""
-
-
-TypeObject = TypeVar("TypeObject", bound="Object")
-
-
-def expose(obj: TypeObject):
-    """Expose the object outside of Python under all circumstances."""
-    _exposed_objects.add(id(obj))
-    # TODO: Make sure that callables are decorated by only_callable_by_call_decorator
-    # (need to determine how to recognize something as a callable)
-    return obj
-
-
-def expose_class_attr(*attr_names: str):
-    """Decorator to expose a class attribute in the context of MyLang."""
-
-    def decorator(cls):
-        for attr_name in attr_names:
-            _exposed_class_attrs.add((cls, attr_name))
-        return cls
-
-    return decorator
-
-
-def expose_instance_attr(*attr_names: str):
-    """Decorator to expose attributes on all instances of class `cls` in the context of MyLang."""
-    def decorator(cls):
-        for attr_name in attr_names:
-            _exposed_instance_attrs.add((cls, attr_name))
-        return cls
-
-    return decorator
-
-
-def expose_obj_attr(obj: "Object", *attr_names: str):
-    """Expose an attribute on an object in the context of MyLang."""
-    for attr_name in attr_names:
-        _exposed_obj_attrs.add((obj, attr_name))
-
-
-def is_exposed(obj: "Object"):
-    """Check if the object is exposed outside of Python."""
-    return id(obj) in _exposed_objects
-
-
-def is_attr_exposed(obj: "Object", attr_name: str):
-    """Check if the given attribute on obj is exposed outside of Python."""
-    if (obj, attr_name) in _exposed_obj_attrs or (type(obj), attr_name) in _exposed_instance_attrs:
-        return True
-
-    type_ = obj if isinstance(obj, type) else type(obj)
-
-    for type_ in type_.mro()[:-1]:  # exclude `object`
-        if (type_, attr_name) in _exposed_class_attrs:
-            return True
-
-    return False
 
 
 @contextmanager
