@@ -5,6 +5,8 @@ from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
 from ._context import (
     CatchSpec,
+    current_module_mylang_counterpart,
+    change_context_var,
     current_stack_frame,
     nested_stack_frame,
     LexicalScope,
@@ -410,16 +412,27 @@ class use(Object, FunctionAsClass):
 
             @classmethod
             def std(cls, source: Union[String, Path]) -> Object:
+                # Try a .my file in the standard library
+                exported_value: Object | None = None
+                path = cls._get_mylang_module_in_stdlib(source)
+                if path.is_file:
+                    exported_value = use._load_mylang_file(path)
+                # Then try to import a Python module from the MyLang standard library
                 import importlib
-                try:
-                    module = importlib.import_module(f"..{source}", package=__package__)
-                except ModuleNotFoundError as e:
-                    path = cls._get_mylang_module_in_stdlib(source)
-                    if path.is_file:
-                        return use._load_mylang_file(path)
+                with change_context_var(
+                    current_module_mylang_counterpart,
+                    exported_value,
+                ):
+                    try:
+                        module = importlib.import_module(f"..{source}", package=__package__)
+                        exported_value = python_obj_to_mylang(module)
+                    except ModuleNotFoundError:
+                        pass
+
+                if exported_value is None:
                     assert False, f"Standard library module {source} not found."
 
-                return python_obj_to_mylang(module)
+                return exported_value
 
             @classmethod
             def third_party(cls, source: Union[String, Path]) -> Object:

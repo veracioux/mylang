@@ -68,7 +68,7 @@ class Transformer(_Transformer):
     def array(self, items: list[Object]):
         return Array.from_iterable(items)
 
-    def statement_list(self, statements: list[Object]):
+    def statement_list(self, statements: list[Args]):
         return StatementList.from_iterable(statements)
 
     def execution_block(self, items: tuple[StatementList]):

@@ -178,11 +178,25 @@ current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)
 """The current stack frame."""
 
 
+current_module_mylang_counterpart = ContextVar[Object]("current_module_mylang_counterpart", default=None)
+"""In case a stdlib module is implemented both in Python and in MyLang,
+this variable holds the value exported from the MyLang implementation.
+
+The Python implementation can then use this variable to access that value.
+Example:
+# /path/to/stdlib/package/module.my
+return {a=1 b=2}
+# /path/to/stdlib/package/module.py
+from mylang import current_module_mylang_counterpart
+current_module_mylang_counterpart.get().additional_value
+"""
+
+
 TypeContextVarValue = TypeVar("TypeContextVarValue")
 
 
 @contextmanager
-def _change_context_var(
+def change_context_var(
     context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue
 ):
     """Switch the current context to the given context."""
