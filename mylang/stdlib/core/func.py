@@ -298,6 +298,7 @@ class use(Object, FunctionAsClass):
 
         # TODO: Generalize validation based on __init__ function signature
 
+        # Prepare variables
         if len(args[:]) != 1:
             raise ValueError("use requires exactly one positional argument")
 
@@ -317,6 +318,7 @@ class use(Object, FunctionAsClass):
         else:
             assert False, "Unreachable"
 
+        # Look up in cache and return if found
         cache_id = cls._get_cache_id(source, loader)
 
         if use_cache and cache_id in use.__cache:
@@ -326,11 +328,12 @@ class use(Object, FunctionAsClass):
             cls._caller_locals()[args[0]] = exported_value
             return exported_value
 
+        # Evaluate the module
         exported_value = loader(source)
-
         # TODO: Modify to work with Path
+        # Bind the exported value in the caller's context
         cls._caller_locals()[source] = exported_value
-
+        # Store in cache
         use.__cache[cache_id] = exported_value
 
         return exported_value
