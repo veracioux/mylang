@@ -29,7 +29,7 @@ def create_locals_dict():
     )
 
     # TODO: Make operators first class citizens
-    for operator in op.operators:
-        dict_[operator] = op.operators[operator]
+    for operator, value in op.operators.items():
+        dict_[operator] = value
 
     return dict_

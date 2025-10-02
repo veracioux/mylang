@@ -1,3 +1,10 @@
+"""Core mylang standard library module.
+
+This module provides the fundamental building blocks of the mylang programming language,
+including primitive types, complex types, base classes, functions, control flow constructs,
+and error handling.
+"""
+
 from .primitive import (
     Primitive,
     Scalar,

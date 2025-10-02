@@ -38,11 +38,10 @@ distribution = true
 max-line-length = 120
 
 [tool.pylint.messages_control]
-disable = "missing-class-docstring, too-few-public-methods"
+disable = "missing-class-docstring, too-few-public-methods, no-else-return"
 
 [tool.pylint.format]
 max-line-length = 120
 
 [tool.black]
 line-length = 120
-

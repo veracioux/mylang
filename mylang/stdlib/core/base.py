@@ -1,3 +1,10 @@
+"""Base classes and fundamental types for mylang.
+
+This module defines the core Object class and related base types that form the
+foundation of the mylang object system, including Args, Dict, Array, and various
+operation types.
+"""
+
 import abc
 import copy
 import inspect

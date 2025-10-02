@@ -1,3 +1,8 @@
+"""Input/Output functions for mylang.
+
+This module provides basic I/O operations like printing to stdout.
+"""
+
 from ..core import undefined
 from ..core.base import Args, Object
 from ..core._utils import expose, function_defined_as_class, FunctionAsClass

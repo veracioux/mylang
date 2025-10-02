@@ -1,5 +1,8 @@
-from mylang.repl import repl
+"""Main module for MyLang CLI."""
+
 import sys
+
+from mylang.repl import repl
 from mylang.parser import parser
 from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
@@ -7,6 +10,7 @@ from mylang.stdlib.core._context import StackFrame, current_stack_frame
 
 
 def main():
+    """Main entry point for the MyLang interpreter."""
     input_file_data: str | None = None
     if len(sys.argv) == 2:
         with open(sys.argv[1], "r", encoding="utf-8") as f:

@@ -1,3 +1,9 @@
+"""Primitive types for mylang.
+
+This module defines the basic primitive types including scalars, numbers,
+booleans, and special values like undefined and null.
+"""
+
 from abc import ABC
 from typing import Generic, TypeVar, final
 

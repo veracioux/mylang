@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""REPL module for MyLang."""
 
 import traceback
 
