@@ -141,6 +141,4 @@ class TestTransformer:
         statements = [Args("set", a=1)]
         result = self.transformer.statement_list(statements)
         assert isinstance(result, StatementList)
-        assert result == [
-            Args("set", a=1)
-        ]
+        assert result == [Args("set", a=1)]

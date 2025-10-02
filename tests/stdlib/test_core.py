@@ -91,9 +91,7 @@ class TestArray:
 
 class Test_fun:
     def test_construct(self):
-        f = fun(
-            "test", Args("x", StatementList(Args("call", "something")), a="A", b="B")
-        )
+        f = fun("test", Args("x", StatementList(Args("call", "something")), a="A", b="B"))
         assert f.name == String("test")
         assert f.parameters == Args.from_dict({0: "x", "a": "A", "b": "B"})
         assert f.body == StatementList(Args("call", "something"))
@@ -151,9 +149,7 @@ class Test_call:
 
         @classmethod
         def _m_classcall_(cls, args: Args, /):
-            return Array.from_iterable(
-                ["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]]
-            )
+            return Array.from_iterable(["func_called", args[0], args[1], args["kwarg1"], args["kwarg2"]])
 
     def assert_result_correct(self, result):
         assert isinstance(result, Array)
@@ -180,9 +176,7 @@ class Test_call:
         self.assert_result_correct(result)
 
     def test_call_ref_of_func(self):
-        result = call(
-            ref.of(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2")
-        )
+        result = call(ref.of(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
         self.assert_result_correct(result)
 
     def test_call_call(self):
@@ -220,7 +214,9 @@ class Test_utils:
 
         # Call the method
         populate_locals_for_callable(
-            locals_, Args("x", "y"), Args("X", "Y"),
+            locals_,
+            Args("x", "y"),
+            Args("X", "Y"),
         )
 
         # Check that positional arguments are mapped correctly
@@ -230,15 +226,10 @@ class Test_utils:
         locals_ = LocalsDict({})
 
         # Call the method with keyword arguments
-        populate_locals_for_callable(
-            locals_, Args(first="default_1st", second="default_2nd"), Args(first="foo")
-        )
+        populate_locals_for_callable(locals_, Args(first="default_1st", second="default_2nd"), Args(first="foo"))
 
         # Check that keyword arguments are mapped correctly
-        assert locals_ == {
-            String("first"): String("foo"),
-            String("second"): String("default_2nd")
-        }
+        assert locals_ == {String("first"): String("foo"), String("second"): String("default_2nd")}
 
     def test_populate_locals_for_callable_mixed_args(self):
         locals_ = LocalsDict({})
@@ -253,16 +244,14 @@ class Test_utils:
             String("x"): String("X"),
             String("y"): String("Y"),
             String("third"): String("default_3rd"),
-            String("fourth"): String("foo")
+            String("fourth"): String("foo"),
         }
 
     def test_populate_locals_for_callable_no_parameters(self):
         locals_ = LocalsDict({})
 
         # Call the method without parameters
-        populate_locals_for_callable(
-            locals_, Args(), Args()
-        )
+        populate_locals_for_callable(locals_, Args(), Args())
 
         # Check that an empty context dict is returned
         assert locals_ == {}
@@ -322,6 +311,7 @@ class Test_ref:
         ref_obj = ref.of(obj)
         ref_ref_obj = ref.of(ref_obj)
         assert ref_ref_obj.obj is obj
+
 
 # TODO: Test function `ref`
 # TODO: This file is incomplete
