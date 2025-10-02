@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring,missing-module-docstring,invalid-name
+
 from lark import Token, Tree
 from mylang.transformer import Transformer
 from mylang.stdlib.core.func import StatementList

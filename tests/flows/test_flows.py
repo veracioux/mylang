@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring,missing-module-docstring
+
 from contextlib import contextmanager
 import os
 
@@ -218,7 +220,6 @@ Imported from use_importee: {'a'=1, 'xyz'={fun 'xyz'}}
 
 @pytest.mark.skip
 def test_test(capsys: CaptureFixture[str]):
-    # TODO: Remove this chdir hack by implementing proper module search path
     execute_module("test.my")
     captured = capsys.readouterr()
 

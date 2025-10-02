@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring,missing-module-docstring
+
 import pytest
 from lark import Tree, UnexpectedCharacters, UnexpectedEOF
 from mylang.parser import parser
@@ -5,7 +7,7 @@ from mylang.parser import parser
 _Tree_repr = Tree.__repr__
 
 
-def Tree_repr(self: "Tree"):
+def Tree_repr(self: "Tree"):  # pylint: disable=invalid-name
     print(self.pretty())
     return _Tree_repr(self)
 

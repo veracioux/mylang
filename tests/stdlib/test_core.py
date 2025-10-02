@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring,missing-module-docstring,invalid-name
+
 import pytest
 
 from mylang.stdlib.core import ref, return_
