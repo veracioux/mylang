@@ -130,22 +130,3 @@ class BoundMethod(fun):
             python_callable = self.func._m_call_
         with set_contextvar(currently_called_func, python_callable):
             return python_callable(args)
-
-
-class Doc(Object):
-    pass
-
-
-class doc(Object, FunctionAsClass):
-    _m_name_ = Special._m_name_("doc")
-
-    @classmethod
-    @Special._m_classcall_
-    def _m_classcall_(cls, args: Args, /) -> String:
-        assert (
-            args.is_positional_only and len(args) == 1
-        ), "doc takes exactly one positional argument"
-        obj = args[0]
-        assert isinstance(obj, Object), "doc argument must be an Object"
-        docstring = getattr(obj, "__doc__", "")
-        return String(docstring if docstring is not None else "")
