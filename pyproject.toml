@@ -34,6 +34,12 @@ executionEnvironments = [
 [tool.pdm]
 distribution = true
 
+[tool.flake8]
+max-line-length = 120
+
 [tool.pylint.messages_control]
 disable = "missing-class-docstring, too-few-public-methods"
+
+[tool.pylint.format]
+max-line-length = 120
 
