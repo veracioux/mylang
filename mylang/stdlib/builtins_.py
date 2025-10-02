@@ -3,6 +3,8 @@
 Importing this module makes the built-in objects available in the current context.
 """
 
+# pylint: disable=unused-import
+
 from .core._context import LocalsDict
 from .core import *
 from .core import op, Object, String

@@ -7,13 +7,13 @@ from mylang.stdlib.core._context import StackFrame, current_stack_frame
 
 
 def main():
-    input_file_data: str = None
+    input_file_data: str | None = None
     if len(sys.argv) == 2:
-        with open(sys.argv[1], "r") as f:
+        with open(sys.argv[1], "r", encoding="utf-8") as f:
             input_file_data = f.read()
     # FIXME: Remove this:
     elif len(sys.argv) > 2:
-        with open(sys.argv[-1], "r") as f:
+        with open(sys.argv[-1], "r", encoding="utf-8") as f:
             input_file_data = f.read()
     elif not sys.stdin.isatty():
         input_file_data = sys.stdin.read()

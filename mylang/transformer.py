@@ -1,3 +1,5 @@
+"""Transformer for converting Lark parse trees to mylang AST objects."""
+
 from lark import Transformer as _Transformer, Token, Tree
 
 from .stdlib.core import (
