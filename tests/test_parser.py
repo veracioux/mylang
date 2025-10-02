@@ -4,9 +4,11 @@ from mylang.parser import parser
 
 _Tree_repr = Tree.__repr__
 
+
 def Tree_repr(self: 'Tree'):
     print(self.pretty())
     return _Tree_repr(self)
+
 
 Tree.__repr__ = Tree_repr
 

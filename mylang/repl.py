@@ -82,7 +82,7 @@ def repl():
             try:
                 evaluated = evaluate(statement_list)
                 repl_print(evaluated)
-            except Exception as e:
+            except Exception:
                 buf = ""
                 traceback.print_exc()
 

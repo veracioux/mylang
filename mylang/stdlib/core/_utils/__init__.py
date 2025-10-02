@@ -305,7 +305,7 @@ def only_callable_by_call_decorator(func):
         called_func = currently_called_func.get()
         assert called_func is wrapper or (
             isinstance(called_func, MethodType) and called_func.__func__ is wrapper
-        ), f"MyLang-exposed callable can only be called from `call`"
+        ), "MyLang-exposed callable can only be called from `call`"
         return func(*args, **kwargs)
 
     return wrapper

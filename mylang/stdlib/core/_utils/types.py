@@ -1,6 +1,4 @@
 from types import ModuleType
-from typing import Any
-
 from ..base import Object
 from weakref import WeakKeyDictionary
 

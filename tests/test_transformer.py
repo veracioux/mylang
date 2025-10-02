@@ -7,11 +7,9 @@ from mylang.stdlib.core import (
     Dict,
     Float,
     Int,
-    Object,
     String,
     null,
     undefined,
-    Array,
 )
 
 

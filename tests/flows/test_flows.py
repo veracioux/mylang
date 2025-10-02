@@ -91,6 +91,7 @@ abc :? $String is true
     """.strip()
     assert captured.err == ""
 
+
 def test_if_else(capsys: CaptureFixture[str]):
     execute_module("if_else.my")
     captured = capsys.readouterr()
