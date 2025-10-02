@@ -23,7 +23,8 @@ from ._utils import (
     python_obj_to_mylang,
     set_contextvar,
     FunctionAsClass,
-    populate_locals_for_callable, expose_instance_attr,
+    populate_locals_for_callable,
+    expose_instance_attr,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
@@ -54,15 +55,9 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
             return
 
         parameters_and_body = (
-            parameters_and_body
-            if isinstance(parameters_and_body, Args)
-            else Args(*parameters_and_body)
+            parameters_and_body if isinstance(parameters_and_body, Args) else Args(*parameters_and_body)
         )
-        parameters = (
-            Args(*parameters_and_body[:-1])
-            + Args.from_dict(parameters_and_body.keyed_dict())
-            + Args(**kwargs)
-        )
+        parameters = Args(*parameters_and_body[:-1]) + Args.from_dict(parameters_and_body.keyed_dict()) + Args(**kwargs)
         body = parameters_and_body[-1]
         assert isinstance(body, StatementList), "Body must be a StatementList"
         self.name = python_obj_to_mylang(name)
@@ -108,21 +103,15 @@ class call(Object, FunctionAsClass):
         ):
             if isinstance(func_key, Args):
                 if len(args) > 0 or len(kwargs) > 0:
-                    raise ValueError(
-                        "If the first argument is of type Args, no other arguments are allowed."
-                    )
+                    raise ValueError("If the first argument is of type Args, no other arguments are allowed.")
                 return cls._m_classcall_(func_key)
             elif len(args) > 0 and isinstance(mylang_args := args[0], Args):
                 if len(args) > 1:
-                    raise ValueError(
-                        "If an argument of type Args is used, it must be the only argument."
-                    )
+                    raise ValueError("If an argument of type Args is used, it must be the only argument.")
                 return cls._m_classcall_([func_key] + mylang_args)
             else:
                 return cls._m_classcall_(
-                    Args.from_dict(
-                        python_dict_from_args_kwargs(func_key, *args, **kwargs)
-                    ),
+                    Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs)),
                 )
 
     def __init__(self, func_key, *args, **kwargs):
@@ -147,9 +136,7 @@ class call(Object, FunctionAsClass):
         if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
             # Function defined as class
             python_callable = obj_to_call._m_classcall_
-            needs_new_stack_frame = (
-                obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
-            )
+            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
         else:
             # Regular MyLang callable
             python_callable = obj_to_call._m_call_
@@ -178,9 +165,7 @@ class call(Object, FunctionAsClass):
                     raise
 
     @classmethod
-    def __process_caught_error(
-        cls, e: Error, catch_spec: CatchSpec
-    ) -> Optional[Object]:
+    def __process_caught_error(cls, e: Error, catch_spec: CatchSpec) -> Optional[Object]:
         """Process a caught error according to the given catch specification.
 
         If an error type matches, execute the corresponding body and return its
@@ -196,9 +181,7 @@ class call(Object, FunctionAsClass):
             instance of, execute `body`.
             """
             for key in args[:-1]:
-                current_stack_frame.get().set_parent_lexical_scope(
-                    caller_stack_frame.lexical_scope
-                )
+                current_stack_frame.get().set_parent_lexical_scope(caller_stack_frame.lexical_scope)
 
                 error_type = get(key)
                 if isinstance_(e, error_type):
@@ -209,9 +192,7 @@ class call(Object, FunctionAsClass):
                         # Inject the error into the catch body, under the specified key
                         body = StatementList.from_iterable(
                             [
-                                Args.from_dict(
-                                    {0: ref.of(set_), catch_spec.error_key: e}
-                                ),
+                                Args.from_dict({0: ref.of(set_), catch_spec.error_key: e}),
                                 *original_body,
                             ]
                         )
@@ -341,9 +322,7 @@ class use(Object, FunctionAsClass):
         return exported_value
 
     @classmethod
-    def _set_alias_binding_in_caller_context(
-        cls, name: "String", exported_value: Object
-    ):
+    def _set_alias_binding_in_caller_context(cls, name: "String", exported_value: Object):
         """Set the alias binding in the caller's lexical scope."""
         # TODO: Handle multiple args potentially
         set_(Args.from_dict({name: exported_value}))
@@ -396,11 +375,10 @@ class use(Object, FunctionAsClass):
 
             def __new__(cls, source: Union[String, Path]):
                 if isinstance(source, Path):
-                    assert all(
-                        isinstance(part, String) for part in source.parts
-                    ), "All parts of a Path must be String"
+                    assert all(isinstance(part, String) for part in source.parts), "All parts of a Path must be String"
 
                 import importlib.util
+
                 spec = importlib.util.find_spec(f"..{source}", package=__package__)
                 if spec:
                     return cls.std(source)
@@ -419,6 +397,7 @@ class use(Object, FunctionAsClass):
                     exported_value = use._load_mylang_file(path)
                 # Then try to import a Python module from the MyLang standard library
                 import importlib
+
                 with change_context_var(
                     current_module_mylang_counterpart,
                     exported_value,
@@ -437,9 +416,7 @@ class use(Object, FunctionAsClass):
             @classmethod
             def third_party(cls, source: Union[String, Path]) -> Object:
                 if not isinstance(source, String):
-                    raise NotImplementedError(
-                        "Third party modules can only be imported by String for now"
-                    )
+                    raise NotImplementedError("Third party modules can only be imported by String for now")
                 if isinstance(source, String):
                     fpath = source.value + ".my"
                 else:
@@ -552,6 +529,7 @@ class ref(Object, FunctionAsClass):
 @final
 class op(Object, FunctionAsClass):
     """Invoke an operation by given operator in Polish notation."""
+
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
     from ._operators import operators
@@ -572,6 +550,7 @@ class op(Object, FunctionAsClass):
 @function_defined_as_class
 class export(Object, FunctionAsClass):
     """Marker class to indicate that an attribute should be exported from a module."""
+
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     def __init__(self, obj: Object):

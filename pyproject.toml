@@ -43,3 +43,6 @@ disable = "missing-class-docstring, too-few-public-methods"
 [tool.pylint.format]
 max-line-length = 120
 
+[tool.black]
+line-length = 120
+

@@ -3,9 +3,7 @@ from ..base import Object
 from weakref import WeakKeyDictionary
 
 
-_wrapped_modules: WeakKeyDictionary["PythonModuleWrapper", ModuleType] = (
-    WeakKeyDictionary()
-)
+_wrapped_modules: WeakKeyDictionary["PythonModuleWrapper", ModuleType] = WeakKeyDictionary()
 
 
 class PythonModuleWrapper(Object):

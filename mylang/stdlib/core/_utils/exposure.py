@@ -41,6 +41,7 @@ def expose_class_attr(*attr_names: str):
 
 def expose_instance_attr(*attr_names: str):
     """Decorator to expose attributes on all instances of class `cls` in the context of MyLang."""
+
     def decorator(cls):
         for attr_name in attr_names:
             _exposed_instance_attrs.add((cls, attr_name))
@@ -62,7 +63,10 @@ def is_exposed(obj: Any):
 
 def is_attr_exposed(obj: Any, attr_name: str):
     """Check if the given attribute on obj is exposed outside of Python."""
-    if (obj, attr_name) in _exposed_obj_attrs or (type(obj), attr_name) in _exposed_instance_attrs:
+    if (obj, attr_name) in _exposed_obj_attrs or (
+        type(obj),
+        attr_name,
+    ) in _exposed_instance_attrs:
         return True
 
     type_ = obj if isinstance(obj, type) else type(obj)

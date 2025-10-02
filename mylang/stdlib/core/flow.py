@@ -40,9 +40,7 @@ class if_(Object, FunctionAsClass):
         assert len(args) in (1, 2), "if requires 1 or 2 arguments"
         condition = args[0] if len(args) == 2 else None
         statement_list = args[-1]
-        assert isinstance(
-            statement_list, StatementList
-        ), "The last argument of an if must be a StatementList"
+        assert isinstance(statement_list, StatementList), "The last argument of an if must be a StatementList"
         # Complex if statement with nested conditions and (optional) else
         if condition is None:
             # TODO: Make this kind of behavior a first-class citizen
@@ -55,15 +53,11 @@ class if_(Object, FunctionAsClass):
                 assert isinstance(
                     orig_statement[-1], StatementList
                 ), "The last argument in each statement of an if-else block must be a StatementList"
-                if isinstance(orig_statement[0], String) and orig_statement[
-                    0
-                ] == String("else"):
+                if isinstance(orig_statement[0], String) and orig_statement[0] == String("else"):
                     from .func import call
 
                     assert len(orig_statement) == 2, "else must have exactly 1 argument"
-                    assert (
-                        i == len(statement_list) - 1
-                    ), "else must be the last statement in an if-else block"
+                    assert i == len(statement_list) - 1, "else must be the last statement in an if-else block"
                     modified_statement_list[i][0] = ref.of(call)
                     modified_statement_list[i][1] = ref.of(cls.__Else)
                 else:
@@ -73,9 +67,9 @@ class if_(Object, FunctionAsClass):
                     # Replace the first argument with a ref of `if` (the simple case with a single condition)
                     modified_statement_list[i][0] = ref.of(cls)
 
-            cls._caller_stack_frame().lexical_scope.custom_data[
-                _Symbols.CURRENT_IF_BLOCK_DATA
-            ] = cls.__IfBlockData(modified_statement_list)
+            cls._caller_stack_frame().lexical_scope.custom_data[_Symbols.CURRENT_IF_BLOCK_DATA] = cls.__IfBlockData(
+                modified_statement_list
+            )
 
             value = modified_statement_list.execute()
             return value
@@ -97,9 +91,7 @@ class if_(Object, FunctionAsClass):
         @classmethod
         def _m_classcall_(cls, args: Args, /):
             assert len(args) == 1, "if requires exactly 1 argument"
-            assert isinstance(
-                statement_list := args[0], StatementList
-            ), "if requires exactly 1 argument"
+            assert isinstance(statement_list := args[0], StatementList), "if requires exactly 1 argument"
             return statement_list.execute()
 
 
@@ -115,9 +107,7 @@ class return_(Object, FunctionAsClass):
         # TODO: Also check that args are positional
         if len(args) > 1:
             raise ValueError("return requires zero or one argument")
-        cls._caller_stack_frame().return_value = return_value = (
-            args[0] if len(args) == 1 else undefined
-        )
+        cls._caller_stack_frame().return_value = return_value = args[0] if len(args) == 1 else undefined
         return return_value
 
 
@@ -132,9 +122,7 @@ class loop(Object, FunctionAsClass):
     @classmethod
     def _m_classcall_(cls, args: Args, /):
         assert len(args) == 1, "loop requires exactly one argument"
-        assert isinstance(
-            args[0], StatementList
-        ), "The argument to loop must be a StatementList"
+        assert isinstance(args[0], StatementList), "The argument to loop must be a StatementList"
 
         copied_statement_list = StatementList.from_iterable(args[0])
         stack_frame = cls._caller_stack_frame()
@@ -164,6 +152,7 @@ class for_(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         from ._context import current_stack_frame
         from ._utils import iter_
+
         assert args.is_positional_only() and len(args) == 4, "for requires exactly 4 positional arguments"
         loop_var, in_, iterable, statement_list = args[:]
         assert in_ == String("in"), "The second argument to for must be 'in'"
@@ -180,6 +169,7 @@ class for_(Object, FunctionAsClass):
 
 class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
     """Base class for loop control functions like while, break, etc."""
+
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
@@ -188,12 +178,8 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
 
     @classmethod
     def _get_loop_data(cls) -> _LoopData:
-        loop_data = cls._caller_lexical_scope().custom_data.get(
-            _Symbols.CURRENT_LOOP_DATA, None
-        )
-        assert (
-            loop_data is not None
-        ), f"{cls._m_name_} statement not inside a loop"
+        loop_data = cls._caller_lexical_scope().custom_data.get(_Symbols.CURRENT_LOOP_DATA, None)
+        assert loop_data is not None, f"{cls._m_name_} statement not inside a loop"
         return loop_data
 
 
@@ -270,7 +256,9 @@ class try_(Object, FunctionAsClass):
 
     @classmethod
     def _m_classcall_(cls, args: Args, /):
-        assert len(args) >= 1 and isinstance(body := args[0], StatementList), "try's first argument must be a StatementList"
+        assert len(args) >= 1 and isinstance(
+            body := args[0], StatementList
+        ), "try's first argument must be a StatementList"
         assert len(args) >= 3, "try requires 'catch' and a catch body"
         assert args[1] == String("catch"), "try's 2nd argument must be 'catch'"
         error_key = args[2] if len(args) == 4 else None
@@ -287,7 +275,9 @@ class try_(Object, FunctionAsClass):
         for statement in catch_body:
             assert statement.is_positional_only(), "Each statement in a catch body must be positional-only"
             assert len(statement) >= 2, "Each statement in a catch body must have exactly 2 arguments"
-            assert isinstance(statement[-1], StatementList), "The second argument in each statement of a catch body must be a StatementList"
+            assert isinstance(
+                statement[-1], StatementList
+            ), "The second argument in each statement of a catch body must be a StatementList"
 
 
 @expose
@@ -301,9 +291,7 @@ class throw(Object, FunctionAsClass):
             raise Error()
         else:
             if isinstance(args[0], Error):
-                assert (
-                    len(args) == 1
-                ), "throw does not accept extra arguments after an Error instance"
+                assert len(args) == 1, "throw does not accept extra arguments after an Error instance"
                 raise args[0]
             else:
                 from .func import get

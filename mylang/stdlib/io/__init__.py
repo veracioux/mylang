@@ -10,6 +10,7 @@ __all__ = ("echo",)
 @function_defined_as_class
 class echo(Object, FunctionAsClass):
     """Echoes the input value to stdout."""
+
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod

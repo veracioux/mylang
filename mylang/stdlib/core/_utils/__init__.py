@@ -91,9 +91,7 @@ def python_obj_to_mylang(obj):
     elif obj in all_functions_defined_as_classes:
         return obj
     else:
-        raise NotImplementedError(
-            f"{python_obj_to_mylang.__name__} is not implemented for type {type(obj)}"
-        )
+        raise NotImplementedError(f"{python_obj_to_mylang.__name__} is not implemented for type {type(obj)}")
 
 
 def python_dict_from_args_kwargs(*args, **kwargs):
@@ -108,10 +106,7 @@ def mylang_obj_to_python(obj: "Object"):
     if isinstance(obj, String):
         return obj.value
     elif isinstance(obj, (Dict, Args)):
-        return {
-            mylang_obj_to_python(k): mylang_obj_to_python(v)
-            for k, v in obj._m_dict_.items()
-        }
+        return {mylang_obj_to_python(k): mylang_obj_to_python(v) for k, v in obj._m_dict_.items()}
     elif isinstance(obj, Scalar):
         return obj.value
     elif isinstance(obj, Bool):
@@ -120,9 +115,7 @@ def mylang_obj_to_python(obj: "Object"):
         return None
     elif not isinstance(obj, Object):
         if isinstance(obj, dict):
-            return {
-                mylang_obj_to_python(k): mylang_obj_to_python(v) for k, v in obj.items()
-            }
+            return {mylang_obj_to_python(k): mylang_obj_to_python(v) for k, v in obj.items()}
         # TODO: Other sequences?
         else:
             return obj
@@ -180,11 +173,7 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
         from .._context import current_stack_frame
 
         this_stack_frame = current_stack_frame.get()
-        return (
-            this_stack_frame.parent
-            if cls.__should_receive_new_stack_frame()
-            else this_stack_frame
-        )
+        return this_stack_frame.parent if cls.__should_receive_new_stack_frame() else this_stack_frame
 
     @classmethod
     def _caller_lexical_scope(cls):
@@ -213,9 +202,7 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
         from ..func import call
 
         current_func = currently_called_func.get()
-        if (
-            cls is call
-        ):  # `call` is a special case: it doesn't get currently_called_func set
+        if cls is call:  # `call` is a special case: it doesn't get currently_called_func set
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
         if current_func.__name__ == "_m_classcall_":
             return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
@@ -231,12 +218,10 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
             cls, FunctionAsClass
         ), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
         assert (
-            not hasattr(cls, "_m_classcall_")
-            or cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
+            not hasattr(cls, "_m_classcall_") or cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
         ), "Please explicitly set _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
         assert (
-            not hasattr(cls, "_m_call_")
-            or cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
+            not hasattr(cls, "_m_call_") or cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
         ), "Please explicitly set _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME to desired bool"
 
         from ..complex import String
@@ -245,11 +230,7 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
         all_functions_defined_as_classes.add(cls)
 
         # Set the function name
-        cls.name = (
-            python_obj_to_mylang(cls._m_name_)
-            if hasattr(cls, "_m_name_")
-            else String(cls.__name__)
-        )
+        cls.name = python_obj_to_mylang(cls._m_name_) if hasattr(cls, "_m_name_") else String(cls.__name__)
 
         if monkeypatch_methods:
             cls._m_classcall_ = classmethod(
@@ -367,9 +348,7 @@ def getattr_(obj: "Object", key: "Object"):
             return getattr(obj.module, key.value)
         else:
             assert False, f"Object {obj} has no attribute {key}"
-    elif isinstance(obj, Object) or (
-        isinstance(obj, type) and issubclass(obj, FunctionAsClass)
-    ):
+    elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
         # Try to access via _m_dict_ first
         try:
             m_dict = obj._m_dict_
@@ -443,6 +422,7 @@ def getname(obj: "Object"):
         return String(obj._m_name_)
     elif hasattr(obj, "__name__"):
         from ..complex import String
+
         return String(obj.__name__)
     else:
         return None

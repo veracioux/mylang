@@ -27,6 +27,7 @@ class ErrorCarrier(Exception):
     This is used to allow MyLang errors created in MyLang to be thrown using
     Python's raise.
     """
+
     error: Error
 
 
@@ -38,9 +39,7 @@ class error(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    def _create(
-        cls, key: String, message: Optional[String] = None, /, base: type[Error] = Error
-    ):
+    def _create(cls, key: String, message: Optional[String] = None, /, base: type[Error] = Error):
         from ..class_ import class_
         from ..func import StatementList, ref
 
@@ -48,6 +47,7 @@ class error(Object, FunctionAsClass):
 
         def _m_str_(*args):
             return String(message or "") if args else key
+
         setattr(Err, "_m_str_", _m_str_)
         Err.__name__ = key.value
 
@@ -59,13 +59,9 @@ class error(Object, FunctionAsClass):
         key = positional[0]
         assert isinstance(key, String), "error key must be a String"
         message = positional[1] if len(positional) > 1 else None
-        assert message is None or isinstance(
-            message, String
-        ), "message must be a String"
+        assert message is None or isinstance(message, String), "message must be a String"
         base = args.keyed_dict().get(String("base"), Error)
-        obj = cls._create(
-            key, message.value if message is not None else None, base=base
-        )
+        obj = cls._create(key, message.value if message is not None else None, base=base)
 
         cls._caller_stack_frame().locals[key] = obj
 

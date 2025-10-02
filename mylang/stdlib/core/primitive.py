@@ -22,9 +22,7 @@ class Scalar(Primitive, Generic[TypeValue]):
         self.value = value
 
     def __eq__(self, other):
-        return (isinstance(other, Scalar) and self.value == other.value) or (
-            other == self.value
-        )
+        return (isinstance(other, Scalar) and self.value == other.value) or (other == self.value)
 
     def __bool__(self):
         return bool(self.value)

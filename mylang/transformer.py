@@ -77,11 +77,7 @@ class Transformer(_Transformer):
         return ExecutionBlock.from_iterable(items[0])
 
     def execution_block_single_statement(self, items: list[Object | Tree]):
-        return StatementList.from_iterable(
-            [
-                self.args(items)
-            ]
-        )
+        return StatementList.from_iterable([self.args(items)])
 
     def prefix_operation(self, items: tuple[Tree, Object]):
         return PrefixOperation(_operator_node_to_string(items[0]), items[1])

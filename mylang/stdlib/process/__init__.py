@@ -12,9 +12,7 @@ class run(Object, FunctionAsClass):
     def _m_classcall_(cls, args):
         assert args.is_positional_only(), "Only positional arguments are allowed"
         argv = args[:]
-        assert all(
-            isinstance(arg, String) for arg in argv
-        ), "All arguments must be strings"
+        assert all(isinstance(arg, String) for arg in argv), "All arguments must be strings"
         subprocess.run(tuple(str(arg) for arg in argv), check=True)
 
 

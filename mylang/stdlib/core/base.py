@@ -1,7 +1,16 @@
 import abc
 import copy
 import inspect
-from typing import TYPE_CHECKING, Any, Generic, Iterable, Optional, TypeVar, final, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Iterable,
+    Optional,
+    TypeVar,
+    final,
+    overload,
+)
 
 from ._utils import (
     mylang_obj_to_python,
@@ -50,8 +59,7 @@ class Object:
     def __repr__(self):
         parameters = inspect.signature(self.__init__).parameters
         if any(
-            x.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-            for x in parameters.values()
+            x.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD) for x in parameters.values()
         ):
             return super().__repr__()
         initializers = {f"{k}={getattr(self, k)!r}" for k in parameters.keys()}
@@ -198,9 +206,7 @@ class BinaryOperation(Operation):
         self.operands = operands
 
     def evaluate(self):
-        return self._call_op(
-            *(self.evaluate_all_in_object(operand) for operand in self.operands)
-        )
+        return self._call_op(*(self.evaluate_all_in_object(operand) for operand in self.operands))
 
 
 # TODO: Use later as base for bunch of classes
@@ -216,6 +222,7 @@ class TypedObject(Object):
     def _m_repr_(self):
         # TODO: Improve
         from .complex import String
+
         return String(f"<{self.type_.name} instance at {hex(id(self))}>")
 
 
@@ -270,12 +277,7 @@ class Array(Object, Generic[T]):
     def _m_repr_(self):
         from .complex import String
 
-        return String(
-            "("
-            + "; ".join(str(x._m_repr_()) for x in self)
-            + (";" if len(self) < 2 else "")
-            + ")"
-        )
+        return String("(" + "; ".join(str(x._m_repr_()) for x in self) + (";" if len(self) < 2 else "") + ")")
 
 
 class Dict(Object):
@@ -291,21 +293,12 @@ class Dict(Object):
         if len(self) == 0:
             return String("{}")
 
-        return String(
-            "{"
-            + ", ".join(
-                f"{k._m_repr_()}={v._m_repr_()}" for k, v in self._m_dict_.items()
-            )
-            + "}"
-        )
+        return String("{" + ", ".join(f"{k._m_repr_()}={v._m_repr_()}" for k, v in self._m_dict_.items()) + "}")
 
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
-        obj._m_dict_ = {
-            python_obj_to_mylang(k): python_obj_to_mylang(v)
-            for k, v in source.items()
-        }
+        obj._m_dict_ = {python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in source.items()}
         return obj
 
     def __setattr__(self, name: str, value: Any, /) -> None:
@@ -388,9 +381,7 @@ class Args(Dict):
         if isinstance(key, slice):
             from .primitive import Int
 
-            positional_args = tuple(
-                v for k, v in self._m_dict_.items() if isinstance(k, Int)
-            )
+            positional_args = tuple(v for k, v in self._m_dict_.items() if isinstance(k, Int))
             return Array.from_iterable(positional_args[key])
         else:
             from .primitive import Int
@@ -407,9 +398,7 @@ class Args(Dict):
         """Combine two Args objects."""
         if isinstance(other, self.__class__):
             positional = (*self[:], *other[:])
-            return Args.from_dict(
-                dict(enumerate(positional)) | self.keyed_dict() | other.keyed_dict()
-            )
+            return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict() | other.keyed_dict())
         elif isinstance(other, Iterable):
             positional = (*self[:], *other)
             return Args.from_dict(dict(enumerate(positional)) | self.keyed_dict())
@@ -432,9 +421,7 @@ class Args(Dict):
                 lambda x: x,
                 (
                     ", ".join(str(arg._m_repr_()) for arg in positional_args),
-                    ", ".join(
-                        f"{k._m_repr_()}={v._m_repr_()}" for k, v in keyed_args.items()
-                    ),
+                    ", ".join(f"{k._m_repr_()}={v._m_repr_()}" for k, v in keyed_args.items()),
                 ),
             )
         )
@@ -447,6 +434,7 @@ class Args(Dict):
         """Check if the Args contains only positional arguments."""
         # TODO: Use different logic
         from .primitive import Int
+
         return all(isinstance(k, Int) for k in self._m_dict_)
 
     def is_keyed_only(self) -> bool:
@@ -458,7 +446,5 @@ class Args(Dict):
         return not self.is_positional_only() and not self.is_keyed_only()
 
     @classmethod
-    def from_positional_keyed(
-        cls, positional: Iterable, keyed: dict[Any, Any], /
-    ) -> "Args":
+    def from_positional_keyed(cls, positional: Iterable, keyed: dict[Any, Any], /) -> "Args":
         return Args.from_dict(dict(enumerate(positional)) | keyed)

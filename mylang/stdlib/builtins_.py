@@ -22,10 +22,7 @@ def create_locals_dict():
             for k, v in globals().items()
             if (
                 not k.startswith("_")
-                and (
-                    (isinstance(v, type) and issubclass(v, Object))
-                    or isinstance(v, Object)
-                )
+                and ((isinstance(v, type) and issubclass(v, Object)) or isinstance(v, Object))
                 and is_exposed(v)
             )
         }

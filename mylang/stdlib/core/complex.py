@@ -57,9 +57,7 @@ class Path(Object):
         return f"{self.__class__.__name__}({', '.join(repr(part) for part in self.parts)})"
 
     def _m_repr_(self):
-        string = ".".join(
-            str(part._m_repr_()) for part in self.parts
-        )
+        string = ".".join(str(part._m_repr_()) for part in self.parts)
         slice_ = slice(
             1 if isinstance(self.parts[0], Dots) else 0,
             -1 if isinstance(self.parts[-1], Dots) else len(string),

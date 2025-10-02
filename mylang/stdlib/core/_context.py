@@ -33,15 +33,9 @@ class LocalsDict:
             return self.key is other.key
 
     def __init__(self, items_or_dict: Union[dict, Sequence[tuple]] = (), /):
-        items = (
-            items_or_dict.items() if isinstance(items_or_dict, dict) else items_or_dict
-        )
+        items = items_or_dict.items() if isinstance(items_or_dict, dict) else items_or_dict
         self._dict: dict["LocalsDict._KeyWrapper", TypeIdentityDictValue] = {
-            (
-                self._KeyWrapper(key)
-                if not isinstance(key, LocalsDict._KeyWrapper)
-                else key
-            ): value
+            (self._KeyWrapper(key) if not isinstance(key, LocalsDict._KeyWrapper) else key): value
             for key, value in items
         }
 
@@ -77,6 +71,7 @@ class LexicalScope:
 
     It represents all the key-value pairs available in the current lexical scope.
     """
+
     __slots__ = ("locals", "parent", "custom_data")
 
     def __init__(
@@ -196,9 +191,7 @@ TypeContextVarValue = TypeVar("TypeContextVarValue")
 
 
 @contextmanager
-def change_context_var(
-    context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue
-):
+def change_context_var(context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue):
     """Switch the current context to the given context."""
     reset_token = context_var.set(value)
 
@@ -209,11 +202,7 @@ def change_context_var(
 
 
 @contextmanager
-def nested_stack_frame(
-    locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None
-):
+def nested_stack_frame(locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None):
     this_stack_frame = current_stack_frame.get()
-    with StackFrame(
-        locals_, parent=this_stack_frame, lexical_scope=lexical_scope
-    ) as new_stack_frame:
+    with StackFrame(locals_, parent=this_stack_frame, lexical_scope=lexical_scope) as new_stack_frame:
         yield new_stack_frame

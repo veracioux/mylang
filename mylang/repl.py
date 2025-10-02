@@ -32,9 +32,7 @@ def repl():
     buf = ""
 
     # TODO: Use with to clean up stack frame
-    current_stack_frame.set(
-        StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get())
-    )
+    current_stack_frame.set(StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()))
 
     # TODO: Handle Alt+Enter to insert a newline without evaluating
 

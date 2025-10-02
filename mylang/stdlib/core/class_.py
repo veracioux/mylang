@@ -36,9 +36,7 @@ class class_(Object, FunctionAsClass):
         # TODO: Validate args
         super().__init__(name, *rest)
         self.name = python_obj_to_mylang(name)
-        self.bases: tuple[class_] = tuple(
-            get(key) for key in rest[:-1]
-        ) or (Object,)
+        self.bases: tuple[class_] = tuple(get(key) for key in rest[:-1]) or (Object,)
 
         @python_obj_to_mylang
         def _default_initializer(*args, **kwargs):
@@ -61,18 +59,14 @@ class class_(Object, FunctionAsClass):
         locals_ = stack_frame.lexical_scope.locals
         # TODO: Make prototype a Dict
         # TODO: Rename LocalsDict to IdentityDict
-        self.prototype = LocalsDict({
-            k: (Method(v) if isinstance(v, fun) else v) for k, v in locals_.dict().items()
-        })
+        self.prototype = LocalsDict({k: (Method(v) if isinstance(v, fun) else v) for k, v in locals_.dict().items()})
 
     @classmethod
     def _m_classcall_(cls, args, /):
         """Create a class."""
         assert args.is_positional_only(), "class arguments must be positional only"
         assert len(args) >= 2
-        assert isinstance(
-            args[-1], StatementList
-        ), "The last argument to class must be a StatementList"
+        assert isinstance(args[-1], StatementList), "The last argument to class must be a StatementList"
         created_class = super().__new__(cls)
         created_class.__init__(*args[:])
 
@@ -89,9 +83,7 @@ class class_(Object, FunctionAsClass):
     def init(cls, *mylang_args, **kwargs):
         mylang_args = Args(*mylang_args, **kwargs)
         with cls._caller_stack_frame() as stack_frame:
-            created_class: class_ = stack_frame.lexical_scope.custom_data[
-                _Symbols.CURRENT_CLASS
-            ]
+            created_class: class_ = stack_frame.lexical_scope.custom_data[_Symbols.CURRENT_CLASS]
             created_class.initializer = Method(fun(String("initializer"), mylang_args))
 
     def _m_repr_(self):
@@ -104,6 +96,7 @@ class_.init = python_obj_to_mylang(class_.init)
 class Method(Object):
     """A function defined in a class's initialization block, that is not bound
     to any object."""
+
     def __init__(self, func: fun):
         self.func = func
         super().__init__(func)
