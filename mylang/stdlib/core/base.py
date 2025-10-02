@@ -84,7 +84,8 @@ class IncompleteExpression(abc.ABC):
 
     @staticmethod
     def evaluate_all_in_object(obj: Object):
-        """Execute all `IncompleteExpression`s recursively in the given object, and replace each with the value it returned.
+        """Execute all `IncompleteExpression`s recursively in the given object,
+        and replace each with the value it returned.
 
         The object and all its nested objects are NOT modified in-place.
         Instead, each object is copied, but only if needed (i.e. if any of its

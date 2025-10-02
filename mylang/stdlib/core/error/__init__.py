@@ -45,6 +45,7 @@ class error(Object, FunctionAsClass):
         from ..func import StatementList, ref
 
         Err = class_(key, ref.of(base), StatementList())
+
         def _m_str_(*args):
             return String(message or "") if args else key
         setattr(Err, "_m_str_", _m_str_)

@@ -374,7 +374,7 @@ def getattr_(obj: "Object", key: "Object"):
         try:
             m_dict = obj._m_dict_
             return m_dict[key]
-        except:
+        except Exception:
             # Try to access on class prototype if applicable
             if isinstance(obj, TypedObject):
                 from ..class_ import Method
@@ -385,13 +385,13 @@ def getattr_(obj: "Object", key: "Object"):
                         return value.bind(obj)
                     else:
                         return value
-                except:
+                except Exception:
                     pass
             # Try to access directly on Python object
             if isinstance(key, String) and is_attr_exposed(obj, key.value):
                 try:
                     return getattr(obj, key.value)
-                except:
+                except Exception:
                     pass
             assert False, f"Object {obj} has no attribute {key}"
     raise NotImplementedError(f"_getattr not implemented for type {type(obj)}")
