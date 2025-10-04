@@ -60,15 +60,7 @@ def repl():
             try:
                 if buf.strip():
                     tree = parser.parse(buf + "\n", start="statement_list")
-                    tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
-                    print(
-                        "  Syntax tree:",
-                        "\n    ".join(line for line in tree_str.splitlines()),
-                        sep="\n    ",
-                    )
-                    with open(_parse_history_file, "a", encoding="utf-8") as f:
-                        f.write(prompt + buf + "\n")
-                        f.write(tree_str + "\n")
+                    _print_debug_info(tree)
                     buf = ""
             except (ParseError, UnexpectedCharacters):
                 buf += "\n"
@@ -100,6 +92,18 @@ def repl():
         except Exception as e:
             buf = ""
             raise e
+
+
+def _print_debug_info(tree: Tree):
+    tree_str = tree.pretty() if isinstance(tree, Tree) else str(tree)
+    print(
+        "  Syntax tree:",
+        "\n    ".join(line for line in tree_str.splitlines()),
+        sep="\n    ",
+    )
+    with open(_parse_history_file, "a", encoding="utf-8") as f:
+        f.write(prompt + buf + "\n")
+        f.write(tree_str + "\n")
 
 
 def evaluate(statements: StatementList) -> Object:
