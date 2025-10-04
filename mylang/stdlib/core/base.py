@@ -271,6 +271,8 @@ class Array(Object, Generic[T]):
 
     @overload
     def __getitem__(self, key: slice, /) -> "Array[T]": ...
+    @overload
+    def __getitem__(self, key: Any, /) -> "T": ...
 
     def __getitem__(self, key: Any, /) -> T:
         result = self._m_array_[key]

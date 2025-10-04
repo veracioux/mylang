@@ -2,7 +2,7 @@
 
 import sys
 
-from mylang.repl import repl
+from mylang.stdlib.repl import REPL
 from mylang.parser import parser
 from mylang.stdlib.core.func import StatementList
 from mylang.transformer import Transformer
@@ -32,7 +32,7 @@ def main():
             statement_list: StatementList = Transformer().transform(tree)
             statement_list.execute()
     else:
-        repl()
+        REPL().run()
 
 
 if __name__ == "__main__":
