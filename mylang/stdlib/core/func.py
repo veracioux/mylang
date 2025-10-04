@@ -25,6 +25,7 @@ from ._utils import (
     FunctionAsClass,
     populate_locals_for_callable,
     expose_instance_attr,
+    is_attr_exposed,
 )
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
@@ -404,7 +405,12 @@ class use(Object, FunctionAsClass):
                 ):
                     try:
                         module = importlib.import_module(f"..{source}", package=__package__)
-                        exported_value = python_obj_to_mylang(module)
+                        assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
+
+                        # Add all globals from module which have been exposed using the expose decorator
+                        for name, obj in vars(module).items():
+                            if is_attr_exposed(module, name):
+                                exported_value[name] = python_obj_to_mylang(obj)
                     except ModuleNotFoundError:
                         pass
 
