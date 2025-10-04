@@ -1,0 +1,3 @@
+- No need to `cd` to the project directory, you are already there.
+- Use `pdm run` before running any python commands to ensure the correct environment is used.
+- Void functions don't have to be annotated with `-> None`.
