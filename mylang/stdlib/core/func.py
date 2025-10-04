@@ -392,9 +392,9 @@ class use(Object, FunctionAsClass):
             def std(cls, source: Union[String, Path]) -> Object:
                 # Try a .my file in the standard library
                 exported_value: Object | None = None
-                path = cls._get_mylang_module_in_stdlib(source)
-                if path.is_file:
-                    exported_value = use._load_mylang_file(path)
+                file_path = cls._get_mylang_module_in_stdlib(source)
+                if file_path.is_file():
+                    exported_value = use._load_mylang_file(file_path)
                 # Then try to import a Python module from the MyLang standard library
                 import importlib
 
