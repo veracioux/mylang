@@ -9,6 +9,7 @@
 
 // Terminals
 
+SINGLE_QUOTED_STRING : "'" _STRING_ESC_INNER "'"
 BOOL: "true" | "false"
 NULL: "null"
 UNDEFINED: "undefined"
@@ -21,7 +22,7 @@ _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 
 // Basic literals
 
-?string: ESCAPED_STRING | UNQUOTED_STRING
+?string: ESCAPED_STRING | SINGLE_QUOTED_STRING | UNQUOTED_STRING
 ?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
 
 // Operations and assignment

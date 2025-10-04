@@ -81,6 +81,42 @@ class TestTransformer:
         assert isinstance(result, String)
         assert result.value == "hello\nworld"
 
+    def test_SINGLE_QUOTED_STRING(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'hello world'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "hello world"
+
+    def test_SINGLE_QUOTED_STRING_with_escapes(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'hello\nworld'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "hello\nworld"
+
+    def test_SINGLE_QUOTED_STRING_with_tab_escape(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'hello\tworld'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "hello\tworld"
+
+    def test_SINGLE_QUOTED_STRING_with_backslash_escape(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'path\to\file'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "path\to\file"
+
+    def test_SINGLE_QUOTED_STRING_with_single_quote_escape(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'It\'s working'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "It's working"
+
+    def test_SINGLE_QUOTED_STRING_with_double_quote_unescaped(self):
+        token = Token("SINGLE_QUOTED_STRING", "'He said \"hello\" to me'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == 'He said "hello" to me'
+
     def test_args_positional_only(self):
         items = [String("a"), Int(1), Float(2.5)]
         result = self.transformer.args(items)

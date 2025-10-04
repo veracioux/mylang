@@ -47,7 +47,10 @@ class Transformer(_Transformer):
         return String(token.value)
 
     def ESCAPED_STRING(self, token: Token):
-        return String(eval(token.value))  # pylint: disable=eval-used
+        return String(eval(token.value))  # TODO: Replace or thoroughly test
+
+    def SINGLE_QUOTED_STRING(self, token: Token):
+        return String(eval(token.value))  # TODO: Replace or thoroughly test
 
     def args(self, items: list[Tree | Object]):
         dict_ = {
