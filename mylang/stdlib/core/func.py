@@ -532,6 +532,8 @@ class use(Object, FunctionAsClass):
                                 if is_attr_exposed(module, name):
                                     mylang_obj = python_obj_to_mylang(obj)
                                     exported_value[name] = mylang_obj
+                        else:
+                            exported_value = python_obj_to_mylang(module)
                     except ModuleNotFoundError:
                         pass
 
