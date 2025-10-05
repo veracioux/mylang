@@ -28,31 +28,23 @@ class REPL:
     """Interactive Read-Eval-Print Loop for MyLang.
 
     Provides an interactive shell for executing MyLang code,
-    supporting multi-line input, syntax error handling, and proper evaluation
-    of expressions vs statements.
+    supporting multi-line input and syntax error handling.
 
     Attributes:
         prompt (str): The primary prompt string (default: ">>> ")
-        execute_single_argument (bool): If True, always execute statements even
-            for single expressions. If False (default), evaluate single-argument
-            expressions to their values instead of executing them as statements.
         buffer_ (str): Internal buffer for accumulating multi-line input
     """
 
     def __init__(
         self,
         prompt: str = ">>> ",
-        execute_single_argument: bool = False,
     ):
         """Initialize the REPL instance.
 
         Args:
             prompt: The prompt string to display for new input lines
-            execute_single_argument: Whether to execute single expressions as
-                statements rather than just printing their values
         """
         self.prompt = prompt
-        self.execute_single_argument = execute_single_argument
         self.buffer_ = ""
 
     def print_prompt(self):
@@ -117,18 +109,7 @@ class REPL:
                     statement_list, StatementList
                 ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
 
-                # If the statement list is a single argument, evaluate its value instead of executing
-                if (
-                    not self.execute_single_argument
-                    and len(statement_list) == 1
-                    and not isinstance(statement_list[0], Args)
-                ):
-                    if isinstance(statement_list[0], IncompleteExpression):
-                        return statement_list[0].evaluate()
-                    else:
-                        return statement_list[0]
-                else:
-                    return statement_list.execute()
+                return statement_list.execute()
         except (ParseError, UnexpectedCharacters):
             # If parsing fails, continue collecting input
             # This allows multi-line input
