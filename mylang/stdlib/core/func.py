@@ -417,18 +417,18 @@ class use(Object, FunctionAsClass):
         # specific return value if return was called from within.
         exported_value: Object
 
-        with nested_stack_frame() as stack_frame:
-            # Inject builtins
-            stack_frame.set_parent_lexical_scope(LexicalScope(builtins_.create_locals_dict()))
-            statement_list = Transformer().transform(tree)
-            statement_list.execute()
+        # Inject builtins
+        stack_frame = current_stack_frame.get()
+        stack_frame.set_parent_lexical_scope(LexicalScope(builtins_.create_locals_dict()))
+        statement_list = Transformer().transform(tree)
+        statement_list.execute()
 
-            if stack_frame.return_value is not None:
-                exported_value = stack_frame.return_value
-            else:
-                # TODO: Maybe wrap in a module type?
-                # TODO: Use identity instead of hashing dict
-                exported_value = stack_frame.lexical_scope.custom_data.pop(_Symbols.CURRENT_EXPORT, Dict())
+        if stack_frame.return_value is not None:
+            exported_value = stack_frame.return_value
+        else:
+            # TODO: Maybe wrap in a module type?
+            # TODO: Use identity instead of hashing dict
+            exported_value = stack_frame.lexical_scope.custom_data.pop(_Symbols.CURRENT_EXPORT, Dict())
 
         return exported_value, stack_frame.lexical_scope
 
