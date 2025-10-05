@@ -358,7 +358,7 @@ class use(Object, FunctionAsClass):
 
         if use_cache and cache_id in use.__cache:
             # Return cached value if available
-            exported_value = use.__cache[args[0].value]
+            exported_value = use.__cache[cache_id]
 
             cls._caller_locals()[args[0]] = exported_value
             return exported_value
