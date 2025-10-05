@@ -5,14 +5,16 @@ supporting multi-line input, syntax error recovery, and proper printing
 of expressions and execution of statements.
 """
 
+import io
+import os
+import sys
 import traceback
 from typing import Optional
 
-from lark import ParseError, Tree, UnexpectedCharacters
+from lark import Tree, UnexpectedCharacters, UnexpectedEOF
 
 from ...parser import parser
-from ..core import Args, undefined, Object
-from ..core.base import IncompleteExpression
+from ..core import undefined, Object
 from ...transformer import Transformer
 from ..core.func import StatementList
 from .. import builtins_
@@ -37,26 +39,32 @@ class REPL:
 
     def __init__(
         self,
-        prompt: str = ">>> ",
+        normal_prompt: str = ">>> ",
+        continuation_prompt: str = "... ",
     ):
         """Initialize the REPL instance.
 
         Args:
             prompt: The prompt string to display for new input lines
         """
-        self.prompt = prompt
+        self.normal_prompt = normal_prompt
+        self.continuation_prompt = continuation_prompt
         self.buffer_ = ""
 
-    def print_prompt(self):
-        """Print the appropriate prompt based on current buffer state.
-
-        Shows ">>> " for new input or "... " for continuation lines.
-        """
+    def prompt(self):
+        """Prompt the user for input."""
         if self.buffer_:
-            prompt = "... "
+            self.print_continuation_prompt()
         else:
-            prompt = self.prompt
-        print(prompt, end="")
+            self.print_normal_prompt()
+
+    def print_normal_prompt(self):
+        """Print the prompt for a new statement from the user."""
+        print(self.normal_prompt, end="")
+
+    def print_continuation_prompt(self):
+        """Print the continuation prompt for multi-line input."""
+        print(self.continuation_prompt, end="")
 
     def read(self, input_: Optional[str] = None) -> Optional[str]:
         """Read a line of input and add it to the buffer.
@@ -71,22 +79,14 @@ class REPL:
             EOFError: When Ctrl+D is pressed
             KeyboardInterrupt: When Ctrl+C is pressed
         """
-        try:
-            line = input_ or input()
-            if not line.strip():
-                return None
-            # Add line to buffer
-            if self.buffer_:
-                self.buffer_ += "\n" + line
-            else:
-                self.buffer_ = line
-            return line
-        except EOFError:
-            raise EOFError("Ctrl+D pressed")
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt("Ctrl+C pressed")
+        line = input_ or input()
+        if not line.strip():
+            return None
+        # Add line to buffer
+        self.buffer_ += line + "\n"
+        return line
 
-    def eval(self) -> Optional[Object]:
+    def eval(self) -> Object:
         """Evaluate the current buffer contents if they form valid MyLang code.
 
         Attempts to parse the buffer as a statement list. If successful, transforms
@@ -97,24 +97,33 @@ class REPL:
 
         Side effects:
             Clears the buffer on successful evaluation.
+        Raises:
+            UnexpectedCharacters: If the input has a syntax error.
+            UnexpectedEOF: If the input is incomplete.
         """
-        try:
-            if self.buffer_.strip():
+        if self.buffer_.strip():
+            # Parse the buffer
+            # Buffer is cleared on successful parsing or on syntax error
+            try:
                 tree = parser.parse(self.buffer_ + "\n", start="statement_list")
-                _print_debug_info(tree)
+            except UnexpectedCharacters:
                 self.buffer_ = ""
-                statement_list = Transformer().transform(tree)
+                raise
+            self.buffer_ = ""
 
-                assert isinstance(
-                    statement_list, StatementList
-                ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
+            # Print some debug info
+            # FIXME: Remove before release
+            if os.getenv("MYLANG_DEBUG"):
+                _print_debug_info(tree)
 
-                return statement_list.execute()
-        except (ParseError, UnexpectedCharacters):
-            # If parsing fails, continue collecting input
-            # This allows multi-line input
-            pass
-        return None
+            statement_list = Transformer().transform(tree)
+
+            assert isinstance(
+                statement_list, StatementList
+            ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
+            result = statement_list.execute()
+            return result
+        return undefined
 
     def print(self, result: Object):
         """Print the result of evaluation if it's not undefined.
@@ -138,34 +147,31 @@ class REPL:
         The REPL supports multi-line input by continuing to read until
         valid syntax is entered.
         """
-        print("MyLang REPL")
-        print("Enter: evaluate | Ctrl+D: exit")
-        print()
-
         # TODO: Use with to clean up stack frame
         current_stack_frame.set(StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()))
 
-        # TODO: Handle Alt+Enter to insert a newline without evaluating
-
         while True:
             try:
-                self.print_prompt()
+                self.prompt()
                 self.read()
                 result = self.eval()
-                if result is not None:
-                    self.print(result)
+                self.print(result)
+            # Fatal exceptions
             except EOFError:
                 # Ctrl+D pressed
-                print("\nGoodbye!")
                 break
+            # Non-fatal exceptions
             except KeyboardInterrupt:
                 # Ctrl+C pressed
                 print("\nKeyboardInterrupt")
                 self.buffer_ = ""
                 continue
-            except ParseError as e:
-                print(f"Parse error: {e}")
+            except UnexpectedCharacters as e:
+                print(f"TODO: Syntax Error")
                 self.buffer_ = ""
+            except UnexpectedEOF as e:
+                # Incomplete input, continue reading
+                pass
             except Exception as e:
                 self.buffer_ = ""
                 traceback.print_exc()

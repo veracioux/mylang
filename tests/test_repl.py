@@ -1,8 +1,9 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring,invalid-name
 
+import re
+from lark import UnexpectedCharacters, UnexpectedEOF
 import pytest
-from unittest.mock import patch
-from io import StringIO
+from unittest.mock import MagicMock, patch
 
 from mylang.stdlib.repl import REPL
 from mylang.stdlib.core import undefined
@@ -16,7 +17,9 @@ from mylang.stdlib import builtins_
 @pytest.fixture(autouse=True)
 def isolate_stack_frame():
     """Isolate stack frame for each test to prevent interference."""
-    reset_token_1 = current_stack_frame.set(StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()))
+    reset_token_1 = current_stack_frame.set(
+        StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get())
+    )
     reset_token_2 = currently_called_func.set(None)
     yield
     current_stack_frame.reset(reset_token_1)
@@ -29,38 +32,37 @@ class TestREPL:
     def test_init_default(self):
         """Test REPL initialization with default parameters."""
         repl = REPL()
-        assert repl.prompt == ">>> "
-        assert repl.execute_single_argument is False
+        assert repl.normal_prompt == ">>> "
         assert repl.buffer_ == ""
 
     def test_init_custom_params(self):
         """Test REPL initialization with custom parameters."""
-        repl = REPL(prompt="custom> ", execute_single_argument=True)
-        assert repl.prompt == "custom> "
-        assert repl.execute_single_argument is True
+        repl = REPL(normal_prompt="custom> ")
+        assert repl.normal_prompt == "custom> "
         assert repl.buffer_ == ""
 
-    @patch('builtins.print')
-    def test_print_prompt_new_input(self, mock_print):
+    def test_print_prompt_new_input(self, capsys: pytest.CaptureFixture[str]):
         """Test print_prompt shows primary prompt for new input."""
         repl = REPL()
-        repl.print_prompt()
-        mock_print.assert_called_once_with(">>> ", end="")
+        repl.prompt()
 
-    @patch('builtins.print')
-    def test_print_prompt_continuation(self, mock_print):
+        captured = capsys.readouterr()
+        assert captured.out == ">>> "
+
+    def test_print_prompt_continuation(self, capsys: pytest.CaptureFixture[str]):
         """Test print_prompt shows continuation prompt when buffer has content."""
         repl = REPL()
         repl.buffer_ = "some code"
-        repl.print_prompt()
-        mock_print.assert_called_once_with("... ", end="")
+        repl.prompt()
+        captured = capsys.readouterr()
+        assert captured.out == "... "
 
     def test_read_with_input(self):
         """Test read method with provided input string."""
         repl = REPL()
         result = repl.read("test input")
         assert result == "test input"
-        assert repl.buffer_ == "test input"
+        assert repl.buffer_ == "test input\n"
 
     def test_read_empty_input(self):
         """Test read method with empty/whitespace-only input."""
@@ -72,22 +74,22 @@ class TestREPL:
     def test_read_adds_to_buffer(self):
         """Test read method appends to existing buffer."""
         repl = REPL()
-        repl.buffer_ = "line 1"
+        repl.buffer_ = "line 1\n"
         result = repl.read("line 2")
         assert result == "line 2"
-        assert repl.buffer_ == "line 1\nline 2"
+        assert repl.buffer_ == "line 1\nline 2\n"
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_read_from_stdin(self, mock_input):
         """Test read method reads from stdin when no input provided."""
         mock_input.return_value = "stdin input"
         repl = REPL()
         result = repl.read()
         assert result == "stdin input"
-        assert repl.buffer_ == "stdin input"
+        assert repl.buffer_ == "stdin input\n"
         mock_input.assert_called_once()
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_read_eof_error(self, mock_input):
         """Test read method handles EOFError."""
         mock_input.side_effect = EOFError()
@@ -95,7 +97,7 @@ class TestREPL:
         with pytest.raises(EOFError):
             repl.read()
 
-    @patch('builtins.input')
+    @patch("builtins.input")
     def test_read_keyboard_interrupt(self, mock_input):
         """Test read method handles KeyboardInterrupt."""
         mock_input.side_effect = KeyboardInterrupt()
@@ -103,90 +105,84 @@ class TestREPL:
         with pytest.raises(KeyboardInterrupt):
             repl.read()
 
-    def test_eval_valid_expression(self):
-        """Test eval method with valid expression."""
-        repl = REPL()
-        repl.buffer_ = '42'
-        result = repl.eval()
-        assert isinstance(result, Int)
-        assert result.value == 42
-        assert repl.buffer_ == ""  # Buffer should be cleared
-
     def test_eval_valid_statement(self):
         """Test eval method with valid statement."""
         repl = REPL()
-        repl.buffer_ = 'set x=42'
+        repl.buffer_ = "set x=42"
         result = repl.eval()
         assert result == undefined
         assert repl.buffer_ == ""  # Buffer should be cleared
 
-    def test_eval_single_expression_vs_statement(self):
-        """Test difference between evaluating single expressions vs statements."""
-        # Single expression should return the value
-        repl1 = REPL(execute_single_argument=False)
-        repl1.buffer_ = '42'
-        result1 = repl1.eval()
-        assert isinstance(result1, Int)
-        assert result1.value == 42
-
-        # With execute_single_argument=True, should execute as statement
-        repl2 = REPL(execute_single_argument=True)
-        repl2.buffer_ = '42'
-        result2 = repl2.eval()
-        assert result2 == undefined
-
     def test_eval_invalid_syntax(self):
         """Test eval method with invalid syntax."""
         repl = REPL()
-        repl.buffer_ = 'invalid syntax +++'
-        result = repl.eval()
-        assert result is None  # Should return None on parse failure
-        assert repl.buffer_ == 'invalid syntax +++'  # Buffer should NOT be cleared
+        repl.buffer_ = "+++"
+        with pytest.raises(UnexpectedCharacters):
+            result = repl.eval()
+        assert repl.buffer_ == ""  # Buffer should be cleared
 
     def test_eval_empty_buffer(self):
         """Test eval method with empty buffer."""
         repl = REPL()
         result = repl.eval()
-        assert result is None
+        assert result is undefined
         assert repl.buffer_ == ""
 
-    def test_eval_multiline_input(self):
+    def test_eval_multiline_input(self, capsys: pytest.CaptureFixture[str]):
         """Test eval method handles multi-line input correctly."""
         repl = REPL()
+
         # First line - invalid syntax
-        repl.buffer_ = 'if true {'
-        result1 = repl.eval()
-        assert result1 is None
-        assert repl.buffer_ == 'if true {'  # Buffer preserved
+        repl.buffer_ = "if true (\n"
+        with pytest.raises(UnexpectedEOF):
+            repl.eval()
+        assert repl.buffer_ == "if true (\n"  # Buffer preserved
 
         # Add second line to complete the statement
         repl.read('echo "hello"')
-        result2 = repl.eval()
-        assert result2 == undefined  # Statement executed
+        with pytest.raises(UnexpectedEOF):
+            repl.eval()
+        assert repl.buffer_ == 'if true (\necho "hello"\n'  # Buffer preserved
+
+        repl.read(')')
+        assert repl.buffer_ == 'if true (\necho "hello"\n)\n'  # Buffer preserved
+        result3 = repl.eval()
+
+        assert result3 == undefined  # Statement executed
         assert repl.buffer_ == ""  # Buffer cleared
 
-    @patch('builtins.print')
-    def test_print_defined_result(self, mock_print):
+        captured = capsys.readouterr()
+        assert captured.out == "hello\n"
+        assert captured.err == ""
+
+    def test_print_defined_result(self, capsys: pytest.CaptureFixture[str]):
         """Test print method prints defined results."""
         repl = REPL()
         result = Int(42)
         repl.print(result)
-        mock_print.assert_called_once_with(str(result._m_repr_()))
 
-    @patch('builtins.print')
-    def test_print_undefined_result(self, mock_print):
+        captured = capsys.readouterr()
+        assert captured.out == "42\n"
+        assert captured.err == ""
+
+    def test_print_undefined_result(self, capsys: pytest.CaptureFixture[str]):
         """Test print method doesn't print undefined results."""
         repl = REPL()
         repl.print(undefined)
-        mock_print.assert_not_called()
 
-    @patch('builtins.print')
-    def test_print_string_result(self, mock_print):
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
+
+    def test_print_string_result(self, capsys: pytest.CaptureFixture[str]):
         """Test print method with string results."""
         repl = REPL()
         result = String("hello world")
         repl.print(result)
-        mock_print.assert_called_once_with(str(result._m_repr_()))
+
+        captured = capsys.readouterr()
+        assert captured.out == "'hello world'\n"
+        assert captured.err == ""
 
     def test_buffer_management(self):
         """Test buffer management across multiple operations."""
@@ -197,99 +193,110 @@ class TestREPL:
 
         # Add first line
         repl.read("line 1")
-        assert repl.buffer_ == "line 1"
+        assert repl.buffer_ == "line 1\n"
 
         # Add second line
         repl.read("line 2")
-        assert repl.buffer_ == "line 1\nline 2"
+        assert repl.buffer_ == "line 1\nline 2\n"
 
-        # Failed eval should preserve buffer
-        repl.buffer_ = "invalid syntax"
-        repl.eval()
-        assert repl.buffer_ == "invalid syntax"
+        # Syntax error should clear buffer
+        repl.buffer_ = "+\n"
+        with pytest.raises(UnexpectedCharacters):
+            repl.eval()
+        assert repl.buffer_ == ""
 
         # Successful eval should clear buffer
-        repl.buffer_ = "42"
+        repl.buffer_ = "set x=42\n"
         repl.eval()
         assert repl.buffer_ == ""
 
-    @patch('builtins.input')
-    @patch('builtins.print')
-    def test_run_loop_basic_flow(self, mock_print, mock_input):
+    @patch("builtins.input")
+    def test_run_loop_basic_flow(self, mock_input: MagicMock, capsys: pytest.CaptureFixture[str]):
         """Test basic REPL run loop flow."""
         # Mock input sequence: valid input, then EOF
-        mock_input.side_effect = ["42", EOFError()]
+        mock_input.side_effect = ["set x=42", "echo $x", EOFError()]
 
         repl = REPL()
-
-        # Mock the print calls we expect
-        call_count = 0
-        def mock_print_side_effect(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                # First call should be the welcome message
-                assert "MyLang REPL" in args[0]
-            elif call_count == 2:
-                # Second call should be the help text
-                assert "Enter:" in args[0]
-            elif call_count == 3:
-                # Third call should be the prompt
-                assert args[0] == ">>> "
-                assert kwargs == {"end": ""}
-            elif call_count == 4:
-                # Fourth call should be the result
-                pass  # We don't know the exact format
-            elif call_count == 5:
-                # Fifth call should be the goodbye message
-                assert "Goodbye!" in args[0]
-
-        mock_print.side_effect = mock_print_side_effect
 
         # This should run the loop and exit on EOF
         repl.run()
 
         # Verify we got through the expected flow
-        assert call_count >= 5
+        captured = capsys.readouterr()
+        assert captured.out == ">>> >>> 42\n>>> "
+        assert captured.err == ""
 
-    @patch('builtins.input')
-    @patch('builtins.print')
-    def test_run_loop_keyboard_interrupt(self, mock_print, mock_input):
+    @patch("builtins.input")
+    def test_run_loop_keyboard_interrupts(self, mock_input, capsys: pytest.CaptureFixture[str]):
         """Test REPL handles KeyboardInterrupt during input."""
-        mock_input.side_effect = KeyboardInterrupt()
+        mock_input.side_effect = [KeyboardInterrupt(), EOFError()]
 
         repl = REPL()
 
-        # Capture print calls
-        printed_messages = []
-        def capture_print(*args, **kwargs):
-            if args:
-                printed_messages.append(args[0])
-
-        mock_print.side_effect = capture_print
-
         repl.run()
 
-        # Should print KeyboardInterrupt message
-        assert "KeyboardInterrupt" in "".join(printed_messages)
+        captured = capsys.readouterr()
+        # Should not print anything to stdout
+        assert captured.out == ">>> \nKeyboardInterrupt\n>>> "
+        assert captured.err == ""
 
-    @patch('builtins.input')
-    @patch('builtins.print')
-    def test_run_loop_parse_error(self, mock_print, mock_input):
+    @patch("builtins.input")
+    def test_run_loop_full(self, mock_input, capsys: pytest.CaptureFixture[str]):
         """Test REPL handles parse errors gracefully."""
-        mock_input.side_effect = ["invalid syntax +++", EOFError()]
+        # Special characters used:
+        # \r indicates a new line that was output by the REPL
+        # \0 separates the prompt from the user input on that line
+        # ^C will be replaced by KeyboardInterrupt()
+        # ^D will be replaced by EOFError()
+        scenario = """
+>>> \0set a = 5
+>>> \0^C
+\rKeyboardInterrupt
+>>> \0dict1 = {
+... \0  a = 1,
+... \0  b = 2,
+... \0}
+>>> \0dict2 = {
+... \0  a = 1,
+... \0^C
+\rKeyboardInterrupt
+>>> \0echo a,
+... \0b
+a b
+>>> \0get a
+5
+>>> \0
+>>> \0\x20\x20
+>>> \0\t
+>>> \0+++
+TODO: Syntax Error
+>>> \0try (
+>>> \0  get b
+>>> \0) catch e (
+>>> \0  Error (
+>>> \0    echo b is not defined
+>>> \0  )
+>>> \0)
+\rb is not defined
+>>> \0^D
+"""
+
+        inputs = [
+            (
+                KeyboardInterrupt() if (raw := line.split("\0")[1]) == "^C"
+                else EOFError() if raw == "^D"
+                else raw
+            )
+            for line in scenario.strip().splitlines()
+            if "\0" in line
+        ]
+        mock_input.side_effect = inputs
+
+        expected_output = re.sub(r"\0.*?\n", "\0", scenario).replace("\r", "\n").replace("\0", "")
 
         repl = REPL()
-
-        printed_messages = []
-        def capture_print(*args, **kwargs):
-            if args:
-                printed_messages.append(args[0])
-
-        mock_print.side_effect = capture_print
-
         repl.run()
 
-        # Should contain parse error message
-        error_messages = [msg for msg in printed_messages if "Parse error" in msg]
-        assert len(error_messages) > 0
+        captured = capsys.readouterr()
+        assert captured.out.strip()[:6] == expected_output.strip()[:6]
+        assert captured.err == ""

@@ -173,7 +173,9 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
         from .._context import current_stack_frame
 
         this_stack_frame = current_stack_frame.get()
-        return this_stack_frame.parent if cls.__should_receive_new_stack_frame() else this_stack_frame
+        stack_frame = this_stack_frame.parent if cls.__should_receive_new_stack_frame() else this_stack_frame
+        assert stack_frame is not None, "_caller_stack_frame: No caller stack frame found"
+        return stack_frame
 
     @classmethod
     def _caller_lexical_scope(cls):

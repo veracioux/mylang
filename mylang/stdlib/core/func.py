@@ -150,9 +150,10 @@ class call(Object, FunctionAsClass):
             try:
                 value = python_callable(fun_args)
                 return value
-            except (Error, ErrorCarrier) as e:
+            except Exception as e:
                 if isinstance(e, ErrorCarrier):
                     e = e.error
+
                 catch_spec = caller_stack_frame.catch_spec
                 if catch_spec is not None:
                     caller_stack_frame.catch_spec = None
@@ -166,7 +167,7 @@ class call(Object, FunctionAsClass):
                     raise
 
     @classmethod
-    def __process_caught_error(cls, e: Error, catch_spec: CatchSpec) -> Optional[Object]:
+    def __process_caught_error(cls, e: Error | Exception, catch_spec: CatchSpec) -> Optional[Object]:
         """Process a caught error according to the given catch specification.
 
         If an error type matches, execute the corresponding body and return its
@@ -184,19 +185,32 @@ class call(Object, FunctionAsClass):
             for key in args[:-1]:
                 current_stack_frame.get().set_parent_lexical_scope(caller_stack_frame.lexical_scope)
 
+                # Check if the error matches the error clause
+                # Treat Python's regular Exception as equivalent to MyLang's Error
+                # If a regular Exception has made its way here, it must be a bug
                 error_type = get(key)
-                if isinstance_(e, error_type):
+                if isinstance(e, Exception):
+                    does_match = error_type is Error
+                else:
+                    does_match = isinstance_(e, error_type)
+
+                if does_match:
                     nonlocal any_error_matched
                     any_error_matched = True
                     original_body: StatementList = args[-1]
                     if catch_spec.error_key is not None:
                         # Inject the error into the catch body, under the specified key
-                        body = StatementList.from_iterable(
-                            [
-                                Args.from_dict({0: ref.of(set_), catch_spec.error_key: e}),
-                                *original_body,
-                            ]
-                        )
+                        body = StatementList.from_iterable([
+                            Args.from_dict({
+                                0: ref.of(set_),
+                                catch_spec.error_key: (
+                                    e
+                                    if isinstance(e, Object)
+                                    else Error("TODO: Opaque error")
+                                ),
+                            }),
+                            *original_body,
+                        ])
                     else:
                         body = original_body
 

@@ -32,7 +32,11 @@ def main():
             statement_list: StatementList = Transformer().transform(tree)
             statement_list.execute()
     else:
+        print("MyLang REPL")
+        print("Enter: evaluate | Ctrl+D: exit")
+        print()
         REPL().run()
+        print("\nGoodbye!")
 
 
 if __name__ == "__main__":
