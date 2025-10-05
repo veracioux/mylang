@@ -281,17 +281,54 @@ class set_(Object, FunctionAsClass):
 @expose
 @function_defined_as_class
 class use(Object, FunctionAsClass):
-    """Use code from another file."""
+    """Use code from another file.
+
+    The use function is MyLang's module import system. It loads and executes
+    code from external sources (files or standard library modules) and makes
+    the exported functionality available in the current scope.
+
+    Supports loading:
+    - Standard library modules
+    - Third-party MyLang modules
+    - TODO: URLs, relative/absolute paths
+
+    Features:
+    - Module caching for performance
+    - Integration with MyLang's export system
+    - TODO: Automatic module resolution
+    """
 
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     __cache: dict[str, Object] = {}
+    """Cache of loaded modules to avoid reloading. Keys are cache IDs, values are exported objects."""
 
     def __init__(self, source: str, /, *, use_cache=True):
+        """Specifies the call contract.
+        Args:
+            source: The module source identifier (string or path)
+            use_cache: Whether to use cached modules (default: True)
+        """
         super().__init__(source, use_cache=use_cache)
 
     @classmethod
     def _m_classcall_(cls, args: Args, /):
+        """Execute the use function to import a module.
+
+        This is the main entry point for the use function. It validates arguments,
+        determines the appropriate loader, handles caching, and binds the imported
+        module to the caller's scope.
+
+        Args: See __init__
+
+        Returns:
+            The exported value from the loaded module
+
+        Raises:
+            ValueError: If incorrect number of arguments provided
+            NotImplementedError: If source is not a String or Path
+            TypeError: If use_cache is not a Bool
+        """
         from .complex import String
 
         # TODO: Generalize validation based on __init__ function signature
@@ -338,21 +375,41 @@ class use(Object, FunctionAsClass):
 
     @classmethod
     def _set_alias_binding_in_caller_context(cls, name: "String", exported_value: Object):
-        """Set the alias binding in the caller's lexical scope."""
-        # TODO: Handle multiple args potentially
+        """Set the alias binding in the caller's lexical scope.
+
+        This method binds an imported module under an alias name in the caller's
+        local scope, making it accessible for use.
+
+        Args:
+            name: The alias name to bind the module under
+            exported_value: The module's exported value to bind
+        """
         set_(Args.from_dict({name: exported_value}))
 
     @classmethod
     def _get_cache_id(cls, source, loader):
+        """Generate a unique (hashable) cache identifier for a module."""
         return (source, loader)
 
     @classmethod
     def _load_mylang_module(cls, code: str):
+        """Load and execute a MyLang module from source code.
+
+        Parse the code, transform it into executable statements, and execute
+        the module in a nested stack frame with builtins injected.
+
+        Args:
+            code: The MyLang source code to execute
+
+        Returns:
+            A tuple of (exported_value, lexical_scope) where:
+            - exported_value: The module's exported value (return value or exported dict)
+            - lexical_scope: The module's lexical scope for further manipulation
+        """
         from ...parser import parser
         from ...transformer import Transformer
         from .. import builtins_
 
-        # TODO: File extension
         tree = parser.parse(code, start="module")
 
         # Enter a nested context, execute the module and obtain its exported
@@ -373,22 +430,51 @@ class use(Object, FunctionAsClass):
                 # TODO: Use identity instead of hashing dict
                 exported_value = stack_frame.lexical_scope.custom_data.pop(_Symbols.CURRENT_EXPORT, Dict())
 
-        return exported_value
+        return exported_value, stack_frame.lexical_scope
 
     @classmethod
     def _load_mylang_file(cls, path: str):
+        """Load and execute a MyLang module from a file.
+
+        Reads the file content and delegates to _load_mylang_module for execution.
+
+        Args:
+            path: File system path to the .my file to load
+
+        Returns:
+            A tuple of (exported_value, lexical_scope) as returned by _load_mylang_module
+        """
         with open(path, "r") as f:
             code = f.read()
         return cls._load_mylang_module(code)
 
     class loaders:
-        """Contains delegates that are used based on the type of source."""
+        """Contains loader delegates that are used based on the type of source.
+
+        The loaders determine which loading strategy to use for different types
+        of modules (standard library vs third-party).
+        """
 
         class lookup:
+            """Factory class that determines the appropriate loader for a given source."""
+
             def __init__(self, source: Union[String, Path]):
-                pass
+                _ = source
 
             def __new__(cls, source: Union[String, Path]):
+                """Determine and return the appropriate loader for the source.
+
+                Resolution order:
+                1. Check if it's a Python module in stdlib
+                2. Check if it's a MyLang .my file in stdlib
+                3. Fall back to third-party loader
+
+                Args:
+                    source: The module source (String or Path)
+
+                Returns:
+                    An appropriate loader instance (std or third_party)
+                """
                 if isinstance(source, Path):
                     assert all(isinstance(part, String) for part in source.parts), "All parts of a Path must be String"
 
@@ -405,11 +491,27 @@ class use(Object, FunctionAsClass):
 
             @classmethod
             def std(cls, source: Union[String, Path]) -> Object:
+                """Load a standard library module (MyLang .my file or Python module).
+
+                First attempts to load a MyLang .my file, then tries to import a
+                corresponding Python module from the stdlib. Combines their exports
+                if both exist.
+
+                Args:
+                    source: The module URI to load from stdlib
+
+                Returns:
+                    The returned value from the loaded module(s)
+
+                Raises:
+                    AssertionError: If the module is not found in stdlib
+                """
                 # Try a .my file in the standard library
                 exported_value: Object | None = None
                 file_path = cls._get_mylang_module_in_stdlib(source)
+                lexical_scope: LexicalScope | None = None
                 if file_path.is_file():
-                    exported_value = use._load_mylang_file(file_path)
+                    exported_value, lexical_scope = use._load_mylang_file(file_path)
                 # Then try to import a Python module from the MyLang standard library
                 import importlib
 
@@ -419,12 +521,17 @@ class use(Object, FunctionAsClass):
                 ):
                     try:
                         module = importlib.import_module(f"..{source}", package=__package__)
-                        assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
+                        if exported_value is not None:
+                            assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
 
-                        # Add all globals from module which have been exposed using the expose decorator
-                        for name, obj in vars(module).items():
-                            if is_attr_exposed(module, name):
-                                exported_value[name] = python_obj_to_mylang(obj)
+                            if lexical_scope is not None:
+                                lexical_scope.locals[String("python")] = exported_value
+
+                            # Add all globals from module which have been exposed using the expose decorator
+                            for name, obj in vars(module).items():
+                                if is_attr_exposed(module, name):
+                                    mylang_obj = python_obj_to_mylang(obj)
+                                    exported_value[name] = mylang_obj
                     except ModuleNotFoundError:
                         pass
 
@@ -435,16 +542,39 @@ class use(Object, FunctionAsClass):
 
             @classmethod
             def third_party(cls, source: Union[String, Path]) -> Object:
+                """Load a third-party MyLang module using lookup strategy.
+
+                TODO: Currently looks up only in CWD.
+
+                Loads external .my files that are not part of the standard library.
+                Currently only supports String sources (not Path objects).
+
+                Args:
+                    source: The module name (must be a String)
+
+                Returns:
+                    The value returned from the loaded module
+                """
                 if not isinstance(source, String):
                     raise NotImplementedError("Third party modules can only be imported by String for now")
                 if isinstance(source, String):
                     fpath = source.value + ".my"
                 else:
                     fpath = os.path.join(*(part._m_str_().value for part in source.parts)) + ".my"
-                return use._load_mylang_file(fpath)
+                return use._load_mylang_file(fpath)[0]
 
             @classmethod
             def _get_mylang_module_in_stdlib(cls, source: Union[String, Path]) -> pathlib.Path:
+                """Get the file path for a MyLang module in the standard library.
+
+                Constructs the full path to a .my file in the stdlib directory.
+
+                Args:
+                    source: The module name (String or Path)
+
+                Returns:
+                    pathlib.Path object pointing to the .my file in stdlib
+                """
                 stdlib_root = pathlib.Path(__file__).parent.parent
                 if isinstance(source, Path):
                     subpath = os.path.join(*(part._m_str_().value for part in source.parts)) + ".my"
