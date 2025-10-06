@@ -44,6 +44,7 @@ class String(Object):
         return self.value
 
 
+@expose
 class Path(Object):
     def __init__(self, *args):
         super().__init__(*args)
@@ -69,6 +70,7 @@ class Path(Object):
         return String(".".join(str_(part) for part in self.parts))
 
 
+@expose
 class Dots(Object):
     """Something like Python's ellipsis, but represents an arbitrary number of dots (1 or more)"""
 

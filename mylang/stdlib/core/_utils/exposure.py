@@ -22,7 +22,7 @@ _exposed_obj_attrs = set[tuple[Any, str]]()
 `attr_name` on object `obj` should be exposed to MyLang."""
 
 
-def expose(obj: Any):
+def expose(obj: T) -> T:
     """Expose the object outside of Python under all circumstances."""
     _exposed_objects.add(id(obj))
     # TODO: Make sure that callables are decorated by only_callable_by_call_decorator

@@ -7,7 +7,7 @@ booleans, and special values like undefined and null.
 from abc import ABC
 from typing import Generic, TypeVar, final
 
-from ._utils import str_, repr_
+from ._utils import expose, str_, repr_
 
 from .base import Object
 import functools
@@ -16,6 +16,7 @@ import functools
 TypeValue = TypeVar("TypeValue")
 
 
+@expose
 class Primitive(Object):
     # TODO: Use weak caching
     @functools.cache
@@ -23,6 +24,7 @@ class Primitive(Object):
         return super().__new__(cls)
 
 
+@expose
 class Scalar(Primitive, Generic[TypeValue]):
     __slots__ = ("value",)
 
@@ -55,6 +57,7 @@ class Scalar(Primitive, Generic[TypeValue]):
         return String(repr(self.value))
 
 
+@expose
 class Number(Scalar[TypeValue], Generic[TypeValue]):
     def __sub__(self, other: "Number"):
         return self.__class__(self.value - other.value)
@@ -89,14 +92,17 @@ class Number(Scalar[TypeValue], Generic[TypeValue]):
         return float(self.value)
 
 
+@expose
 class Int(Number[int]):
     pass
 
 
+@expose
 class Float(Number[float]):
     pass
 
 
+@expose
 class Bool(Scalar[bool]):
     def _m_repr_(self):
         from .complex import String
@@ -104,24 +110,26 @@ class Bool(Scalar[bool]):
     def _m_str_(self):
         return repr_(self)
 
+@expose
 class Empty(Primitive, ABC):
     def __bool__(self):
         return False
 
 
+@expose
 @final
 class Null(Empty):
     def _m_repr_(self):
         return "null"
 
 
+@expose
 @final
 class Undefined(Empty):
     def _m_repr_(self):
         return "undefined"
 
 
-# TODO: uncomment
 null = Null()
 undefined = Undefined()
 true = Bool(True)

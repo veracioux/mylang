@@ -20,6 +20,7 @@ from typing import (
 )
 
 from ._utils import (
+    expose,
     mylang_obj_to_python,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from .class_ import class_
 
 
+@expose
 class Object:
     _m_name_: Optional[str]
     _m_dict_: dict["Object", "Object"]
@@ -85,6 +87,7 @@ class Object:
         return id(self)
 
 
+@expose
 class IncompleteExpression(abc.ABC):
     """An expression that needs some processing in order to produce a value."""
 
@@ -166,6 +169,7 @@ class IncompleteExpression(abc.ABC):
         return obj
 
 
+@expose
 class Operation(Object, IncompleteExpression, abc.ABC):
     __slots__ = "operator"
 
@@ -181,6 +185,7 @@ class Operation(Object, IncompleteExpression, abc.ABC):
             return op._m_classcall_(Args(String(self.operator), *operands))
 
 
+@expose
 class UnaryOperation(Operation, abc.ABC):
     __slots__ = "operand"
 
@@ -192,14 +197,17 @@ class UnaryOperation(Operation, abc.ABC):
         return self._call_op(self.evaluate_all_in_object(self.operand))
 
 
+@expose
 class PrefixOperation(UnaryOperation):
     pass
 
 
+@expose
 class PostfixOperation(UnaryOperation):
     pass
 
 
+@expose
 class BinaryOperation(Operation):
     __slots__ = "operands"
 
@@ -213,6 +221,7 @@ class BinaryOperation(Operation):
 
 # TODO: Use later as base for bunch of classes
 # TODO: Maybe rename to ClassInstance
+@expose
 class TypedObject(Object):
     """Same as :class:`Object` but read/assignment is validated against the class definition."""
 
@@ -228,6 +237,7 @@ class TypedObject(Object):
         return String(f"<{self.type_.name} instance at {hex(id(self))}>")
 
 
+@expose
 class Array(Object, Generic[T]):
     """An object that contains a sequence of objects."""
 
@@ -284,6 +294,7 @@ class Array(Object, Generic[T]):
         return String("(" + "; ".join(repr_(x).value for x in self) + (";" if len(self) < 2 else "") + ")")
 
 
+@expose
 class Dict(Object):
     """An object that contains a mapping of keys to values."""
 
@@ -353,6 +364,7 @@ class Dict(Object):
 
 
 # TODO: Check if there are any gaps in the positional argument indexes?
+@expose
 @final
 class Args(Dict):
     """Represents an unpacked Dict.

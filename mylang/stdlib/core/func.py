@@ -586,6 +586,7 @@ class use(Object, FunctionAsClass):
                 return stdlib_root / subpath
 
 
+@expose
 class StatementList(Array[Args]):
     def __init__(self, *args, **kwargs):
         self.aborted = False
@@ -627,6 +628,7 @@ class StatementList(Array[Args]):
         return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
 
 
+@expose
 class ExecutionBlock(StatementList, IncompleteExpression):
     def evaluate(self) -> Object:
         caller_stack_frame = current_stack_frame.get()

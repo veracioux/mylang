@@ -16,6 +16,8 @@ from .primitive import (
     Null,
     undefined,
     null,
+    true,
+    false,
 )
 from .complex import String, Path, Dots
 from .base import (
@@ -27,8 +29,11 @@ from .base import (
     PrefixOperation,
     PostfixOperation,
     BinaryOperation,
+    IncompleteExpression,
+    UnaryOperation,
+    TypedObject,
 )
-from .func import fun, call, set_, get, use, ref, op, export
+from .func import fun, call, set_, get, use, ref, op, export, StatementList, ExecutionBlock
 from .flow import if_, return_, loop, while_, break_, continue_, throw, try_, for_
 from .class_ import class_
 from .error import Error, error
@@ -44,6 +49,8 @@ __all__ = (
     "Null",
     "undefined",
     "null",
+    "true",
+    "false",
     "String",
     "Path",
     "Dots",
@@ -51,6 +58,13 @@ __all__ = (
     "Args",
     "Dict",
     "Array",
+    "IncompleteExpression",
+    "Operation",
+    "UnaryOperation",
+    "PrefixOperation",
+    "PostfixOperation",
+    "BinaryOperation",
+    "TypedObject",
     "ref",
     "fun",
     "call",
@@ -76,4 +90,6 @@ __all__ = (
     "throw",
     "try_",
     "export",
+    "StatementList",
+    "ExecutionBlock",
 )
