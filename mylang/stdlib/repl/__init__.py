@@ -5,9 +5,7 @@ supporting multi-line input, syntax error recovery, and proper printing
 of expressions and execution of statements.
 """
 
-import io
 import os
-import sys
 import traceback
 from typing import Optional
 
@@ -19,6 +17,7 @@ from ...transformer import Transformer
 from ..core.func import StatementList
 from .. import builtins_
 from ..core._context import StackFrame, current_stack_frame
+from ..core._utils import repr_
 
 
 # FIXME: Remove before release
@@ -134,7 +133,7 @@ class REPL:
         if result == undefined:
             pass
         else:
-            print(str(result._m_repr_()))
+            print(repr_(result))
 
     def run(self):
         """Run the interactive REPL loop.

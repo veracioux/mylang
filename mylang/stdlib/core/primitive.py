@@ -7,6 +7,8 @@ booleans, and special values like undefined and null.
 from abc import ABC
 from typing import Generic, TypeVar, final
 
+from ._utils import str_, repr_
+
 from .base import Object
 import functools
 
@@ -40,7 +42,7 @@ class Scalar(Primitive, Generic[TypeValue]):
         return f"{self.__class__.__name__}({self.value!r})"
 
     def __str__(self):
-        return str(self._m_str_())
+        return str_(self).value
 
     def _m_str_(self):
         from .complex import String
@@ -97,11 +99,10 @@ class Float(Number[float]):
 
 class Bool(Scalar[bool]):
     def _m_repr_(self):
-        return "true" if self.value else "false"
-
+        from .complex import String
+        return String("true" if self.value else "false")
     def _m_str_(self):
-        return self._m_repr_()
-
+        return repr_(self)
 
 class Empty(Primitive, ABC):
     def __bool__(self):

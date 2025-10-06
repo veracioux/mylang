@@ -23,7 +23,9 @@ from ._utils import (
     mylang_obj_to_python,
     python_dict_from_args_kwargs,
     python_obj_to_mylang,
+    repr_,
     set_contextvar,
+    str_,
 )
 
 T = TypeVar("T", bound="Object")
@@ -73,18 +75,11 @@ class Object:
         return f"{self.__class__.__name__}({', '.join(initializers)})"
 
     def __str__(self):
-        if hasattr(self, "_m_str_"):
-            return self._m_str_().value
-        elif isinstance(self, TypedObject) and hasattr(self.type_, "_m_str_"):
-            return self.type_._m_str_(self).value
-        elif hasattr(self, "_m_repr_"):
-            return str(self._m_repr_())
-        else:
-            raise NotImplementedError("__str__ is not implemented for this object")
+        return str_(self).value
 
     def _m_repr_(self) -> "String":
         """Return a string representation of the object that will be used in the mylang context."""
-        raise NotImplementedError("repr is not implemented for this object")
+        raise NotImplementedError
 
     def __hash__(self):
         return id(self)
@@ -286,7 +281,7 @@ class Array(Object, Generic[T]):
     def _m_repr_(self):
         from .complex import String
 
-        return String("(" + "; ".join(str(x._m_repr_()) for x in self) + (";" if len(self) < 2 else "") + ")")
+        return String("(" + "; ".join(repr_(x).value for x in self) + (";" if len(self) < 2 else "") + ")")
 
 
 class Dict(Object):
@@ -302,7 +297,7 @@ class Dict(Object):
         if len(self) == 0:
             return String("{}")
 
-        return String("{" + ", ".join(f"{k._m_repr_()}={v._m_repr_()}" for k, v in self._m_dict_.items()) + "}")
+        return String("{" + ", ".join(f"{repr_(k)}={repr_(v)}" for k, v in self._m_dict_.items()) + "}")
 
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
@@ -429,8 +424,8 @@ class Args(Dict):
             filter(
                 lambda x: x,
                 (
-                    ", ".join(str(arg._m_repr_()) for arg in positional_args),
-                    ", ".join(f"{k._m_repr_()}={v._m_repr_()}" for k, v in keyed_args.items()),
+                    ", ".join(repr_(arg.value) for arg in positional_args),
+                    ", ".join(f"{repr_(k)}={repr_(v)}" for k, v in keyed_args.items()),
                 ),
             )
         )

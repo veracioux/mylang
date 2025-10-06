@@ -1,6 +1,8 @@
 """Utilities for exposing Python objects and attributes to MyLang."""
 
-from typing import Any
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 _exposed_objects = set[int]()
 """Holds all objects that are exposed outside of Python, in the context of MyLang."""
@@ -31,7 +33,7 @@ def expose(obj: Any):
 def expose_class_attr(*attr_names: str):
     """Decorator to expose a class attribute in the context of MyLang."""
 
-    def decorator(cls):
+    def decorator(cls: T) -> T:
         for attr_name in attr_names:
             _exposed_class_attrs.add((cls, attr_name))
         return cls
@@ -42,7 +44,7 @@ def expose_class_attr(*attr_names: str):
 def expose_instance_attr(*attr_names: str):
     """Decorator to expose attributes on all instances of class `cls` in the context of MyLang."""
 
-    def decorator(cls):
+    def decorator(cls: T) -> T:
         for attr_name in attr_names:
             _exposed_instance_attrs.add((cls, attr_name))
         return cls
@@ -50,10 +52,12 @@ def expose_instance_attr(*attr_names: str):
     return decorator
 
 
-def expose_obj_attr(obj: Any, *attr_names: str):
+def expose_obj_attr(obj: T, *attr_names: str) -> T:
     """Expose an attribute on an object in the context of MyLang."""
     for attr_name in attr_names:
         _exposed_obj_attrs.add((obj, attr_name))
+
+    return obj
 
 
 def is_exposed(obj: Any):

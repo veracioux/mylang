@@ -126,7 +126,7 @@ class StackFrame:
 
     def __init__(
         self,
-        locals_: LocalsDict = None,
+        locals_: Optional[LocalsDict] = None,
         parent: Optional["StackFrame"] = None,
         lexical_scope: Optional[LexicalScope] = None,
     ):

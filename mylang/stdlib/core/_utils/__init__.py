@@ -46,6 +46,7 @@ from .exposure import (
 if TYPE_CHECKING:
     from .._context import LocalsDict
     from ..base import Args, Object
+    from ..complex import String
     from ..class_ import class_
 
 
@@ -413,7 +414,7 @@ def issubclass_(obj: "Object", type_: Union[type, "class_"]):
         return False
 
 
-def getname(obj: "Object"):
+def getname(obj: "Object | type[Object]"):
     """Get the name of the object in the context of MyLang, if any."""
     from ..complex import String
     from ..func import fun
@@ -436,3 +437,53 @@ def iter_(obj: "Object"):
         return iter(obj)
     else:
         raise NotImplementedError(f"Object {obj} is not iterable in MyLang")
+
+
+def repr_(obj: "Object | type[Object]") -> "String":
+    """Get the string representation of the object in the context of MyLang."""
+    from ..complex import String
+    from ..base import Object, TypedObject
+
+    if isinstance(obj, type):
+        return String(f"<class {getname(obj)}>")
+    if hasattr(obj, "_m_repr_"):
+        try:
+            return obj._m_repr_()
+        except NotImplementedError as e:
+            pass
+    elif isinstance(obj, TypedObject) and hasattr(obj.type_, "_m_repr_"):
+        try:
+            return obj.type_._m_repr_(obj)
+        except NotImplementedError:
+            pass
+    return String(f"{{TODO: str: {obj!r}}}")
+
+
+def str_(obj: "Object | type[Object]") -> "String":
+    from ..complex import String
+    from ..base import TypedObject
+
+    if isinstance(obj, type):
+        return String(f"<class {getname(obj)}>")
+    elif hasattr(obj, "_m_str_"):
+        try:
+            return obj._m_str_()
+        except NotImplementedError:
+            pass
+    elif isinstance(obj, TypedObject) and hasattr(obj.type_, "_m_str_"):
+        try:
+            return obj.type_._m_str_(obj)
+        except NotImplementedError:
+            pass
+    elif hasattr(obj, "_m_repr_"):
+        try:
+            return repr_(obj)
+        except NotImplementedError:
+            pass
+    elif isinstance(obj, TypedObject) and hasattr(obj.type_, "_m_repr_"):
+        try:
+            return obj.type_._m_repr_(obj)
+        except NotImplementedError:
+            pass
+
+    return String(f"{{TODO: str: {obj!r}}}")

@@ -5,7 +5,7 @@ This module provides basic I/O operations like printing to stdout.
 
 from ..core import undefined
 from ..core.base import Args, Object
-from ..core._utils import expose, function_defined_as_class, FunctionAsClass
+from ..core._utils import expose, function_defined_as_class, FunctionAsClass, str_
 
 __all__ = ("echo",)
 
@@ -21,5 +21,5 @@ class echo(Object, FunctionAsClass):
     @classmethod
     def _m_classcall_(cls, args: Args, /):
         """Prints the input value to stdout."""
-        print(*(str(arg._m_str_() if hasattr(arg, "_m_str_") else str(arg)) for arg in args[:]))
+        print(*(str_(arg).value for arg in args[:]))
         return undefined

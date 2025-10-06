@@ -1,7 +1,7 @@
 import functools
 from typing import Any
 
-from mylang.stdlib.core._utils import expose
+from ._utils import expose, repr_, str_
 
 from .base import Args, Object
 
@@ -57,7 +57,7 @@ class Path(Object):
         return f"{self.__class__.__name__}({', '.join(repr(part) for part in self.parts)})"
 
     def _m_repr_(self):
-        string = ".".join(str(part._m_repr_()) for part in self.parts)
+        string = ".".join(repr_(part).value for part in self.parts)
         slice_ = slice(
             1 if isinstance(self.parts[0], Dots) else 0,
             -1 if isinstance(self.parts[-1], Dots) else len(string),
@@ -66,7 +66,7 @@ class Path(Object):
         return String(string[slice_])
 
     def _m_str_(self):
-        return String(".".join(part._m_str_().value for part in self.parts))
+        return String(".".join(str_(part) for part in self.parts))
 
 
 class Dots(Object):
