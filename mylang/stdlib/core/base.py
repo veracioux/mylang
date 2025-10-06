@@ -314,6 +314,13 @@ class Array(Object, Generic[T]):
 
         return String("(" + "; ".join(repr_(x).value for x in self) + (";" if len(self) < 2 else "") + ")")
 
+    def _m_getattr_(self, key: "Object", /):
+        from .primitive import Int
+
+        if isinstance(key, Int):
+            return self._m_array_[key.value]
+        else:
+            raise NotImplementedError("TODO: Choose an exception")
 
 @expose
 class Dict(Object):

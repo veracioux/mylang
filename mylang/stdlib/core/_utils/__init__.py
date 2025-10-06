@@ -344,7 +344,9 @@ def getattr_(obj: "Object", key: "Object"):
     from ..complex import String
     from .types import PythonModuleWrapper
 
-    if isinstance(obj, (Dict, LexicalScope, LocalsDict)):
+    if hasattr(obj, "_m_getattr_"):
+        return obj._m_getattr_(key)
+    elif isinstance(obj, (Dict, LexicalScope, LocalsDict)):
         return obj[key]
     elif isinstance(obj, PythonModuleWrapper):
         if isinstance(key, String) and is_attr_exposed(obj.module, key.value):

@@ -207,7 +207,7 @@ def change_context_var(context_var: ContextVar[TypeContextVarValue], value: Type
 
 
 @contextmanager
-def nested_stack_frame(locals_: LocalsDict = None, lexical_scope: Optional[LexicalScope] = None):
+def nested_stack_frame(locals_: Optional[LocalsDict] = None, lexical_scope: Optional[LexicalScope] = None):
     this_stack_frame = current_stack_frame.get()
     with StackFrame(locals_, parent=this_stack_frame, lexical_scope=lexical_scope) as new_stack_frame:
         yield new_stack_frame

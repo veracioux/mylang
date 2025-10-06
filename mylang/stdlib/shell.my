@@ -1,0 +1,18 @@
+export user_prompt = {
+    fun user_prompt (
+        echo ">>>"
+    )
+}
+
+# Modify the get function for the shell
+orig_get = &get
+fun get arg (
+    if ($arg) :? $Int (
+        echo hi
+        return _py_args.($arg)
+    )
+)
+
+# fun _activate (
+    
+# )
