@@ -173,7 +173,10 @@ current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)
 """The current stack frame."""
 
 
-current_module_mylang_counterpart = ContextVar[Object]("current_module_mylang_counterpart", default=None)
+internal_module_bridge = ContextVar[LexicalScope | None](
+    "internal_module_bridge",
+    default=None,
+)
 """In case a stdlib module is implemented both in Python and in MyLang,
 this variable holds the value exported from the MyLang implementation.
 
@@ -182,8 +185,10 @@ Example:
 # /path/to/stdlib/package/module.my
 return {a=1 b=2}
 # /path/to/stdlib/package/module.py
-from mylang import current_module_mylang_counterpart
-current_module_mylang_counterpart.get().additional_value
+from mylang import internal_module_bridge
+internal_module_bridge.get().mylang_function()
+def python_function():
+    print("Hello from Python")
 """
 
 

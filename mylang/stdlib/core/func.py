@@ -5,7 +5,7 @@ from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
 from ._context import (
     CatchSpec,
-    current_module_mylang_counterpart,
+    internal_module_bridge,
     change_context_var,
     current_stack_frame,
     nested_stack_frame,
@@ -516,11 +516,12 @@ class use(Object, FunctionAsClass):
                 import importlib
 
                 with change_context_var(
-                    current_module_mylang_counterpart,
+                    internal_module_bridge,
                     exported_value,
                 ):
                     try:
-                        module = importlib.import_module(f"..{source}", package=__package__)
+                        with change_context_var(internal_module_bridge, lexical_scope):
+                            module = importlib.import_module(f"..{source}", package=__package__)
                         if exported_value is not None:
                             assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
 
