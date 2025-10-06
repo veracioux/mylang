@@ -29,7 +29,9 @@ from ._utils import (
     str_,
 )
 
+
 T = TypeVar("T", bound="Object")
+
 
 if TYPE_CHECKING:
     from .complex import String
@@ -39,7 +41,9 @@ if TYPE_CHECKING:
 @expose
 class Object:
     _m_name_: Optional[str]
+    """Name of the object, if a name other than __name__ is desired."""
     _m_dict_: dict["Object", "Object"]
+    """Dictionary of the object's attributes."""
 
     @overload
     def __init__(self, *args: "Object", **kwargs: "Object"): ...
@@ -61,12 +65,6 @@ class Object:
         else:
             self._m_init_(Args.from_dict(python_dict_from_args_kwargs(*args, **kwargs)))
 
-    def _m_init_(self, args: "Args", /):
-        assert isinstance(args, Args)
-
-    def _m_setattr_(self, key: "Object", value: "Object", /):
-        assert False
-
     def __repr__(self):
         parameters = inspect.signature(self.__init__).parameters
         if any(
@@ -79,12 +77,35 @@ class Object:
     def __str__(self):
         return str_(self).value
 
-    def _m_repr_(self) -> "String":
-        """Return a string representation of the object that will be used in the mylang context."""
-        raise NotImplementedError
-
     def __hash__(self):
         return id(self)
+
+    ### Special methods ###
+
+    def _m_init_(self, args: "Args", /):
+        """Initialize the object with the given Args."""
+        assert isinstance(args, Args)
+
+    def _m_repr_(self) -> "String":
+        """Return a string representation of the object that will be used in the mylang context."""
+        raise
+
+    def _m_getattr_(self, key: "Object", /) -> "Object":
+        """Get an attribute of the object by key."""
+        _ = key
+        raise
+
+    def _m_setattr_(self, key: "Object", value: "Object", /):
+        """Set an attribute of the object by key."""
+        _ = key, value
+        raise
+
+
+# These methods are defined in Object so one can inspect their docstrings from implementors.
+# But they should not exist by default unless defined by subclasses.
+del Object._m_repr_
+del Object._m_getattr_
+del Object._m_setattr_
 
 
 @expose
