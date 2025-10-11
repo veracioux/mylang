@@ -537,6 +537,34 @@ path
 """.strip()
         )
 
+    def test_parse_path_parenthesized_expression(self):
+        t = parser.parse("a.(b).1", start="path")
+        assert (
+            t.pretty().strip()
+            == """
+path
+  a
+  b
+  1
+""".strip()
+        )
+
+    def test_parse_path_tighter_than_binary_operation(self):
+        t = parser.parse("a.b.1 + c.d", start="expression")
+        assert (
+            t.pretty().strip()
+            == """
+binary_operation
+  path
+    a
+    b
+    1
+  operator\t+
+  path
+    c
+    d
+""".strip()
+        )
 
 class TestModule:
     def test_empty_module(self):
