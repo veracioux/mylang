@@ -20,8 +20,6 @@ from .stdlib.core import (
     Path,
 )
 
-__all__ = ("Transformer",)
-
 from .stdlib.core.func import StatementList, ExecutionBlock
 
 

@@ -16,8 +16,6 @@ from ._utils import (
 from .base import Args, Object, TypedObject
 from .complex import String
 
-__all__ = ("class_",)
-
 
 class _Symbols:
     CURRENT_CLASS = type("CURRENT_CLASS", (object,), {})

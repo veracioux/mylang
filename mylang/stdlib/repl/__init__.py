@@ -160,13 +160,13 @@ class REPL:
                 print("\nKeyboardInterrupt")
                 self.buffer_ = ""
                 continue
-            except UnexpectedCharacters as e:
-                print(f"TODO: Syntax Error")
+            except UnexpectedCharacters:
+                print("TODO: Syntax Error")
                 self.buffer_ = ""
-            except UnexpectedEOF as e:
+            except UnexpectedEOF:
                 # Incomplete input, continue reading
                 pass
-            except Exception as e:
+            except Exception:
                 self.buffer_ = ""
                 traceback.print_exc()
 

@@ -452,14 +452,14 @@ def iter_(obj: "Object"):
 def repr_(obj: "Object | type[Object]") -> "String":
     """Get the string representation of the object in the context of MyLang."""
     from ..complex import String
-    from ..base import Object, TypedObject
+    from ..base import TypedObject
 
     if isinstance(obj, type):
         return String(f"<class {getname(obj)}>")
     if hasattr(obj, "_m_repr_"):
         try:
             return obj._m_repr_()
-        except NotImplementedError as e:
+        except NotImplementedError:
             pass
     elif isinstance(obj, TypedObject) and hasattr(obj.type_, "_m_repr_"):
         try:

@@ -6,9 +6,6 @@ from ._utils import expose, repr_, str_
 from .base import Args, Object
 
 
-__all__ = ("String", "Path")
-
-
 @expose
 class String(Object):
     # TODO: Use weak caching

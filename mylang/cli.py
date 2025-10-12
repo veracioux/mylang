@@ -3,7 +3,6 @@
 import abc
 import argparse
 import sys
-from typing import Optional
 
 __all__ = ("CLI", "FileInputSource", "TextInputSource")
 
@@ -68,7 +67,3 @@ class CLI:
 
         # No arguments and stdin is a tty - start REPL
         return None
-
-
-if __name__ == "__main__":
-    main()

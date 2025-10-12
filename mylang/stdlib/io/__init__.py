@@ -7,8 +7,6 @@ from ..core import undefined
 from ..core.base import Args, Object
 from ..core._utils import expose, function_defined_as_class, FunctionAsClass, str_
 
-__all__ = ("echo",)
-
 
 # TODO: This is just a crude prototype
 @expose
