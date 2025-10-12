@@ -27,6 +27,7 @@ from ._utils import (
     expose_instance_attr,
     is_attr_exposed,
 )
+from ._utils.types import PythonContext
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
 from .error import Error, ErrorCarrier
@@ -510,6 +511,7 @@ class use(Object, FunctionAsClass):
                 exported_value: Object | None = None
                 file_path = cls._get_mylang_module_in_stdlib(source)
                 lexical_scope: LexicalScope | None = None
+                python_module_proxy = PythonContext()
                 if file_path.is_file():
                     exported_value, lexical_scope = use._load_mylang_file(file_path)
                 # Then try to import a Python module from the MyLang standard library
@@ -522,6 +524,7 @@ class use(Object, FunctionAsClass):
                     try:
                         with change_context_var(internal_module_bridge, lexical_scope):
                             module = importlib.import_module(f"..{source}", package=__package__)
+                        python_module_proxy.python_module = module
                         if exported_value is not None:
                             assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
 

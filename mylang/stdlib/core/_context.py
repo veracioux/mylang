@@ -181,8 +181,16 @@ internal_module_bridge = ContextVar[LexicalScope | None](
 this variable holds the value exported from the MyLang implementation.
 
 The Python implementation can then use this variable to access that value.
+
+The MyLang implementation will receive a _python variable injected into its
+lexical scope, holding a proxy to the Python module.
+
 Example:
 # /path/to/stdlib/package/module.my
+fun mylang_function() {
+    echo Hello from MyLang
+    _python.python_function()
+)
 return {a=1 b=2}
 # /path/to/stdlib/package/module.py
 from mylang import internal_module_bridge
