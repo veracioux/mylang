@@ -90,6 +90,10 @@ class Object:
         """Return a string representation of the object that will be used in the mylang context."""
         raise
 
+    def _m_str_(self) -> "String":
+        """Convert the object to a MyLang String."""
+        raise
+
     def _m_getattr_(self, key: "Object", /) -> "Object":
         """Get an attribute of the object by key."""
         _ = key
@@ -104,6 +108,7 @@ class Object:
 # These methods are defined in Object so one can inspect their docstrings from implementors.
 # But they should not exist by default unless defined by subclasses.
 del Object._m_repr_
+del Object._m_str_
 del Object._m_getattr_
 del Object._m_setattr_
 
@@ -419,6 +424,9 @@ class Args(Dict):
 
     @overload
     def __getitem__(self, key: slice, /) -> Array: ...
+
+    @overload
+    def __getitem__(self, key: Any, /) -> Object: ...
 
     def __getitem__(self, key: Any, /) -> Object:
         """Get an item from the Args."""
