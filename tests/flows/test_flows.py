@@ -218,6 +218,21 @@ Imported from use_importee: {'a'=1, 'xyz'={fun 'xyz'}}
     assert captured.err == ""
 
 
+def test_symbol(capsys: CaptureFixture[str]):
+    execute_module("symbol.my")
+    captured = capsys.readouterr()
+
+    assert (
+        captured.out.strip()
+        == """
+$($a) is A
+$($a1) is A1
+$($b) is B
+""".strip()
+    )
+    assert captured.err == ""
+
+
 @pytest.mark.skip
 def test_test(capsys: CaptureFixture[str]):
     execute_module("test.my")

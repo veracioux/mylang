@@ -1,3 +1,4 @@
+"""Internal context, not exposed to MyLang."""
 from contextlib import contextmanager
 import dataclasses
 from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union

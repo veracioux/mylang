@@ -1,0 +1,12 @@
+a = {Symbol a}
+a1 = {Symbol a}
+
+symbol b
+
+$a = A
+$a1 = A1
+$b = B
+
+echo "$($a) is" $($a)
+echo "$($a1) is" $($a1)
+echo "$($b) is" $($b)

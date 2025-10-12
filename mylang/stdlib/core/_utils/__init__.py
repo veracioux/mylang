@@ -13,6 +13,19 @@ from typing import (
 )
 
 
+from .exposure import (
+    expose,
+    expose_obj_attr,
+    expose_instance_attr,
+    expose_class_attr,
+    is_exposed,
+    is_attr_exposed,
+)
+
+
+from .context import require_parent_stack_frame, require_parent_lexical_scope, require_parent_locals
+
+
 # Re-export
 __all__ = (
     "expose",
@@ -22,6 +35,8 @@ __all__ = (
     "is_exposed",
     "is_attr_exposed",
     "iter_",
+    "repr_",
+    "str_",
     "python_obj_to_mylang",
     "python_dict_from_args_kwargs",
     "mylang_obj_to_python",
@@ -30,16 +45,9 @@ __all__ = (
     "isinstance_",
     "issubclass_",
     "getname",
-)
-
-
-from .exposure import (
-    expose,
-    expose_obj_attr,
-    expose_instance_attr,
-    expose_class_attr,
-    is_exposed,
-    is_attr_exposed,
+    "require_parent_stack_frame",
+    "require_parent_lexical_scope",
+    "require_parent_locals",
 )
 
 
