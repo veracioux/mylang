@@ -104,6 +104,17 @@ class Object:
         _ = key, value
         raise
 
+    @classmethod
+    def _m_classcall_(cls, args: "Args", /) -> "Object":
+        """Invoked when the class is called with the given Args."""
+        _ = cls, args
+        raise
+
+    def _m_call_(self, args: "Args", /) -> "Object":
+        """Invoked when an instance of the class is called with the given Args."""
+        _ = self, args
+        raise
+
 
 # These methods are defined in Object so one can inspect their docstrings from implementors.
 # But they should not exist by default unless defined by subclasses.
@@ -111,6 +122,8 @@ del Object._m_repr_
 del Object._m_str_
 del Object._m_getattr_
 del Object._m_setattr_
+del Object._m_classcall_
+del Object._m_call_
 
 
 @expose
