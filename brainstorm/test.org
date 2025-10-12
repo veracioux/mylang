@@ -19,24 +19,32 @@
           )
       )
 
-      test [.tested_func] "description" (
-          pseudo group prep (
-              # Mocking must be intuitive and syntax-light
-              # Mocking is intelligent - it knows how to handle different types of target
-              mock &Target (
-                  fun internal_func args (
-                      return return_value
+      test [.tested_func | "description"]  (
+          test "description" ( # happy path
+              pseudo group prep (
+                  # Mocking must be intuitive and syntax-light
+                  # Mocking is intelligent - it knows how to handle different types of target
+                  mock &Target (
+                      fun internal_func args (
+                          return return_value
+                      )
+                  )
+              )
+              pseudo group do (
+                  target = {Target}
+                  result = {target.tested_func args}
+              )
+              pseudo group assert (
+                  assert $result == expected_value
+                  assert.called (
+                      target.internal_func args
                   )
               )
           )
-          pseudo group do (
-              target = {Target}
-              result = {target.tested_func args}
-          )
-          pseudo group assert (
-              assert $result == expected_value
-              assert.called (
-                  target.internal_func args
+          test "description" ( # sad path
+              pseudo with test.throws ExpectedError (
+                  target = {Target}
+                  target.tested_func bad_args
               )
           )
       )
