@@ -20,11 +20,6 @@ from ..core._context import StackFrame, current_stack_frame
 from ..core._utils import repr_
 
 
-# FIXME: Remove before release
-# This is for debugging purposes, mostly so I can feed it to an LLM
-_parse_history_file = "parse-history.txt"
-
-
 class REPL:
     """Interactive Read-Eval-Print Loop for MyLang.
 
@@ -189,5 +184,3 @@ def _print_debug_info(tree: Tree) -> None:
         "\n    ".join(line for line in tree_str.splitlines()),
         sep="\n    ",
     )
-    with open(_parse_history_file, "a", encoding="utf-8") as f:
-        f.write(tree_str + "\n")
