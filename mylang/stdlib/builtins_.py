@@ -4,6 +4,7 @@ Importing this module makes the built-in objects available in the current contex
 """
 
 # pylint: disable=unused-import
+# pylint: disable=unused-wildcard-import
 
 from .core._context import LocalsDict
 from .core import *

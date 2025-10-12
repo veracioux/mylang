@@ -32,7 +32,8 @@ from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
 from .error import Error, ErrorCarrier
 
-__all__ = ("fun", "call", "get", "set_")
+
+__all__ = ("fun", "call", "get", "set_", "use", "ref", "op", "export", "StatementList", "ExecutionBlock")
 
 
 TypeReturn = TypeVar("TypeReturn", bound=Object)
