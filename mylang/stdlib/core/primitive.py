@@ -127,7 +127,8 @@ class Null(Empty):
 @final
 class Undefined(Empty):
     def _m_repr_(self):
-        return "undefined"
+        from . import String
+        return String("undefined")
 
 
 null = Null()

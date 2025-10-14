@@ -44,6 +44,8 @@ class Object:
     """Name of the object, if a name other than __name__ is desired."""
     _m_dict_: dict["Object", "Object"]
     """Dictionary of the object's attributes."""
+    _m_array_: list["Object"]
+    """List of the object's items, if it is array-like."""
 
     @overload
     def __init__(self, *args: "Object", **kwargs: "Object"): ...
@@ -99,7 +101,7 @@ class Object:
         _ = key
         raise
 
-    def _m_setattr_(self, key: "Object", value: "Object", /):
+    def _m_setattr_(self, key: "Object", value: "Object", /) -> None:
         """Set an attribute of the object by key."""
         _ = key, value
         raise
@@ -204,6 +206,11 @@ class IncompleteExpression(abc.ABC):
                         is_obj_copied = True
                     arr[i] = new_item
                     setattr(obj, "_m_array_", arr)
+
+        from . import Path
+
+        if isinstance(obj, Path):
+            return Path(*(IncompleteExpression.evaluate_all_in_object(part) for part in obj.parts))
 
         return obj
 
@@ -356,35 +363,17 @@ class Dict(Object):
 
         return String("{" + ", ".join(f"{repr_(k)}={repr_(v)}" for k, v in self._m_dict_.items()) + "}")
 
+    def _m_getattr_(self, key):
+        return self._m_dict_[key]
+
+    def _m_setattr_(self, key, value):
+        self._m_dict_[key] = value
+
     @classmethod
     def from_dict(cls, source: dict[Any, Any], /):
         obj = cls.__new__(cls)
         obj._m_dict_ = {python_obj_to_mylang(k): python_obj_to_mylang(v) for k, v in source.items()}
         return obj
-
-    def __setattr__(self, name: str, value: Any, /) -> None:
-        if name == "_m_dict_":
-            super().__setattr__(name, value)
-        else:
-            from .complex import String
-
-            try:
-                getattr(self, "_m_dict_")
-            except AttributeError:
-                super().__setattr__("_m_dict_", {})
-            self._m_dict_[String(name)] = python_obj_to_mylang(value)
-
-    def __getattribute__(self, name: str, /) -> Any:
-        if name == "_m_dict_":
-            return super().__getattribute__("_m_dict_")
-        else:
-            from .complex import String
-
-            key = String(name)
-            if hasattr(self, "_m_dict_") and key in self._m_dict_:
-                return self._m_dict_[key]
-            else:
-                return super().__getattribute__(name)
 
     def __len__(self):
         return len(self._m_dict_)

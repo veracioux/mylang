@@ -3,10 +3,11 @@ import os
 import pathlib
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
+from ._utils import get_actual_python_module_export, set_contextvar
+
 from ._context import (
     CatchSpec,
     internal_module_bridge,
-    change_context_var,
     current_stack_frame,
     nested_stack_frame,
     LexicalScope,
@@ -435,7 +436,7 @@ class use(Object, FunctionAsClass):
         return exported_value, stack_frame.lexical_scope
 
     @classmethod
-    def _load_mylang_file(cls, path: str):
+    def _load_mylang_file(cls, path: os.PathLike):
         """Load and execute a MyLang module from a file.
 
         Reads the file content and delegates to _load_mylang_module for execution.
@@ -509,21 +510,24 @@ class use(Object, FunctionAsClass):
                     AssertionError: If the module is not found in stdlib
                 """
                 # Try a .my file in the standard library
+
                 exported_value: Object | None = None
                 file_path = cls._get_mylang_module_in_stdlib(source)
                 lexical_scope: LexicalScope | None = None
                 python_module_proxy = PythonContext()
                 if file_path.is_file():
                     exported_value, lexical_scope = use._load_mylang_file(file_path)
+
                 # Then try to import a Python module from the MyLang standard library
                 import importlib
 
-                with change_context_var(
+                # TODO: Remove
+                with set_contextvar(
                     internal_module_bridge,
                     exported_value,
                 ):
                     try:
-                        with change_context_var(internal_module_bridge, lexical_scope):
+                        with set_contextvar(internal_module_bridge, lexical_scope):
                             module = importlib.import_module(f"..{source}", package=__package__)
                         python_module_proxy.python_module = module
                         if exported_value is not None:
@@ -538,7 +542,7 @@ class use(Object, FunctionAsClass):
                                     mylang_obj = python_obj_to_mylang(obj)
                                     exported_value[name] = mylang_obj
                         else:
-                            exported_value = python_obj_to_mylang(module)
+                            exported_value = get_actual_python_module_export(python_module_proxy.python_module)
                     except ModuleNotFoundError:
                         pass
 

@@ -1,6 +1,13 @@
 """Utilities for exposing Python objects and attributes to MyLang."""
 
-from typing import Any, TypeVar
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, TypeVar
+from weakref import WeakKeyDictionary
+
+
+if TYPE_CHECKING:
+    from ..base import Object
+
 
 T = TypeVar("T")
 
@@ -80,3 +87,35 @@ def is_attr_exposed(obj: Any, attr_name: str):
             return True
 
     return False
+
+
+_export_overrides = WeakKeyDictionary[ModuleType, "Object"]()
+"""Holds modules that should export a specific MyLang object instead of the module itself."""
+
+
+def export_object_from_module(module: ModuleType, obj: "Object"):
+    """Export a MyLang object form a Python module.
+
+    Python modules always export a ModuleType object. When a module is flagged using this function,
+    importers will export the object instead of the module to MyLang.
+
+    Importers should use `get_actual_export` to get the actual object to export.
+    """
+    _export_overrides[module] = obj
+
+
+def get_actual_python_module_export(module: ModuleType) -> "Object":
+    """Get the actual object to export from a Python module.
+
+    If the module has been flagged using `export_object_from_module`, return the exported object.
+    Otherwise, export the module itself, appropriately wrapped for use in MyLang.
+    """
+    from . import python_obj_to_mylang
+
+    override = _export_overrides.get(module)
+    if override is not None:
+        return override
+
+    exported_value = python_obj_to_mylang(module)
+    assert exported_value is not None
+    return exported_value

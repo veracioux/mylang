@@ -64,7 +64,7 @@ class Path(Object):
         return String(string[slice_])
 
     def _m_str_(self):
-        return String(".".join(str_(part) for part in self.parts))
+        return String(".".join(str_(part).value for part in self.parts))
 
 
 @expose

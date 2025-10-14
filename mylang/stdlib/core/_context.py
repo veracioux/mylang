@@ -1,9 +1,9 @@
 """Internal context, not exposed to MyLang."""
 from contextlib import contextmanager
 import dataclasses
-from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
 
-from ._utils import python_obj_to_mylang
+from ._utils.types import IdentityDict
 from .base import Object
 from contextvars import ContextVar
 
@@ -12,59 +12,19 @@ if TYPE_CHECKING:
     from .func import StatementList
 
 
-TypeIdentityDictKey = TypeVar("TypeIdentityDictKey", bound=Object)
-TypeIdentityDictValue = TypeVar("TypeIdentityDictValue", bound=Object)
-
-
-class LocalsDict:
-    """A dictionary that uses object identity (is) instead of hash and equality (==) for keys."""
-
-    __slots__ = ("_dict",)
-
-    class _KeyWrapper:
-        __slots__ = ("key",)
-
-        def __init__(self, key: TypeIdentityDictKey, /):
-            self.key = key
-
-        def __hash__(self):
-            return id(self.key)
-
-        def __eq__(self, other):
-            return self.key is other.key
-
-    def __init__(self, items_or_dict: Union[dict, Sequence[tuple]] = (), /):
-        items = items_or_dict.items() if isinstance(items_or_dict, dict) else items_or_dict
-        self._dict: dict["LocalsDict._KeyWrapper", TypeIdentityDictValue] = {
-            (self._KeyWrapper(key) if not isinstance(key, LocalsDict._KeyWrapper) else key): value
-            for key, value in items
-        }
-
-    def __contains__(self, key: Any, /) -> bool:
+class LocalsDict(IdentityDict[Any, Object]):
+    def __contains__(self, key, /) -> bool:
+        from ._utils import python_obj_to_mylang
         return self._KeyWrapper(python_obj_to_mylang(key)) in self._dict
 
-    def __getitem__(self, key: Any, /):
+    def __getitem__(self, key, /):
+        from ._utils import python_obj_to_mylang
         return self._dict[self._KeyWrapper(python_obj_to_mylang(key))]
 
-    def __setitem__(self, key: Any, value: TypeIdentityDictValue, /):
+    def __setitem__(self, key, value, /):
+        from ._utils import python_obj_to_mylang
         self._dict[self._KeyWrapper(python_obj_to_mylang(key))] = value
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.dict()!r})"
-
-    def dict(self):
-        return {k.key: v for k, v in self._dict.items()}
-
-    def values(self):
-        return self._dict.values()
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, LocalsDict):
-            return self._dict == other._dict
-        elif isinstance(other, dict):
-            return self == self.__class__(other)
-        else:
-            return False
 
 
 class LexicalScope:
@@ -91,6 +51,7 @@ class LexicalScope:
         """
 
     def __getitem__(self, key: Any) -> Object:
+        from ._utils import python_obj_to_mylang
         key = python_obj_to_mylang(key)
         if key in self.locals:
             return self.locals[key]
@@ -110,6 +71,13 @@ class LexicalScope:
 
 @dataclasses.dataclass
 class CatchSpec:
+    """Specification for a catch block in MyLang.
+    
+    Example:
+    catch error_key (
+        body
+    )
+    """
     error_key: Optional[Object]
     body: "StatementList"
 
@@ -123,6 +91,7 @@ class StackFrame:
         "depth",
         "catch_spec",
         "_reset_token",
+        "__weakref__",
     )
 
     def __init__(
@@ -169,6 +138,9 @@ class StackFrame:
             current_stack_frame.reset(self._reset_token)
             self._reset_token = None
 
+    def __repr__(self):
+        return f"StackFrame(depth={self.depth})"
+
 
 current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)
 """The current stack frame."""
@@ -202,17 +174,6 @@ def python_function():
 
 
 TypeContextVarValue = TypeVar("TypeContextVarValue")
-
-
-@contextmanager
-def change_context_var(context_var: ContextVar[TypeContextVarValue], value: TypeContextVarValue):
-    """Switch the current context to the given context."""
-    reset_token = context_var.set(value)
-
-    try:
-        yield value
-    finally:
-        context_var.reset(reset_token)
 
 
 @contextmanager

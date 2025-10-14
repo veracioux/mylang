@@ -20,6 +20,8 @@ from .exposure import (
     expose_class_attr,
     is_exposed,
     is_attr_exposed,
+    export_object_from_module,
+    get_actual_python_module_export,
 )
 
 
@@ -48,6 +50,8 @@ __all__ = (
     "require_parent_stack_frame",
     "require_parent_lexical_scope",
     "require_parent_locals",
+    "export_object_from_module",
+    "get_actual_python_module_export",
 )
 
 
@@ -61,7 +65,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-def python_obj_to_mylang(obj):
+def python_obj_to_mylang(obj) -> "Object":
     """Convert a Python object to a MyLang analog."""
     from ..base import Object
 
@@ -135,7 +139,7 @@ def mylang_obj_to_python(obj: "Object"):
 TypeFunc = TypeVar("TypeFunc", bound=FunctionType)
 
 
-all_functions_defined_as_classes: set[type] = set()
+all_functions_defined_as_classes: set["FunctionAsClass"] = set()
 
 
 TypeReturn = TypeVar("TypeReturn", bound="Object")
@@ -452,14 +456,14 @@ def iter_(obj: "Object"):
 def repr_(obj: "Object | type[Object]") -> "String":
     """Get the string representation of the object in the context of MyLang."""
     from ..complex import String
-    from ..base import TypedObject
+    from ..base import Object, TypedObject
 
     if isinstance(obj, type):
         return String(f"<class {getname(obj)}>")
     if hasattr(obj, "_m_repr_"):
         try:
             return obj._m_repr_()
-        except NotImplementedError:
+        except NotImplementedError as e:
             pass
     elif isinstance(obj, TypedObject) and hasattr(obj.type_, "_m_repr_"):
         try:

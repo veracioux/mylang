@@ -1,7 +1,7 @@
 import sys
 
 from ..core import undefined, get, fun, Array
-from ..core._utils import python_obj_to_mylang, expose_obj_attr
+from ..core._utils import python_obj_to_mylang, expose_obj_attr, require_parent_locals
 from ..core._context import internal_module_bridge, current_stack_frame
 from ..repl import REPL
 
@@ -19,7 +19,7 @@ def activate():
     parent_stack_frame = current_stack_frame.get().parent
     assert parent_stack_frame is not None
 
-    parent_stack_frame.lexical_scope.locals["get"] = mylang["get"]
+    require_parent_locals()["get"] = mylang["get"]
     mylang.locals["_py_args"] = Array.from_iterable(sys.argv)
     _activated = True
     return undefined

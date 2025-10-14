@@ -233,6 +233,21 @@ $($b) is B
     assert captured.err == ""
 
 
+def test_context(capsys: CaptureFixture[str]):
+    execute_module("context.my")
+    captured = capsys.readouterr()
+
+    assert (
+        captured.out.strip()
+        == """
+f1: $c1.a is 2
+f11: $c.a 2
+f1: $c2.a is 2
+""".strip()
+    )
+    assert captured.err == ""
+
+
 @pytest.mark.skip
 def test_test(capsys: CaptureFixture[str]):
     execute_module("test.my")

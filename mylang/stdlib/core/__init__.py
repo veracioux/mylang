@@ -38,6 +38,7 @@ from .flow import if_, return_, loop, while_, break_, continue_, throw, try_, fo
 from .class_ import class_
 from .error import Error, error
 from .symbol import Symbol, symbol
+from .context import Context, context
 
 __all__ = (
     "Primitive",
@@ -90,4 +91,6 @@ __all__ = (
     "Symbol",
     "symbol",
     "op",
+    "context",
+    "Context",
 )
