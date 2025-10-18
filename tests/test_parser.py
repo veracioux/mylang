@@ -81,6 +81,42 @@ scenarios = {
             """,
         ),
     },
+    "operation": {
+        "!+-a": Scenario(
+            start="expression",
+            expected="""
+          prefix_operation
+            operator
+              !
+              +
+              -
+            a
+          """,
+        ),
+        "a!$+": Scenario(
+            start="expression",
+            expected="""
+            postfix_operation
+              a
+              operator
+                !
+                $
+                +
+            """,
+        ),
+        "a +- b": Scenario(
+            start="expression",
+            expected="""
+            binary_operation
+              a
+              operator
+                +
+                -
+              b
+            """,
+        ),
+        # TODO: tight binary op
+    },
     "args": {
         "positional_single": Scenario(
             start="args",
@@ -494,12 +530,12 @@ def test_parser(start: str, source: str, expected: str):
 
 # Additional tests that cannot be expressed as the simple scenarios above
 
+
 class TestAdditionalScenarios:
     class TestStatementList:
         def test_does_not_parse_assignment(self):
             with pytest.raises(UnexpectedEOF):
                 parser.parse("a=1", start="statement_list")
-
 
     class TestDict:
         def test_does_not_parse_execution_block(self):
