@@ -29,15 +29,15 @@ _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 
 // TODO: Assignment could perhaps be a special case of binary operation
 assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
-!operator: _OPERATOR_SYMBOL+
+OPERATOR: _OPERATOR_SYMBOL+
         | ("=" (_OPERATOR_SYMBOL | "=")+)
         | ((_OPERATOR_SYMBOL | "=")+ "=")
 // NOTE: The below precedence is set to obtain desired precedence within the
 // operator group, not globally
-prefix_operation: operator expression
-postfix_operation: expression operator
-binary_operation.3: (expression operator expression)
-                | (expression _WS+ operator _WS+ expression)
+prefix_operation: OPERATOR expression
+postfix_operation: expression OPERATOR
+binary_operation.3: (expression OPERATOR expression)
+                | (expression _WS+ OPERATOR _WS+ expression)
 _any_operation: prefix_operation | postfix_operation | binary_operation
 
 

@@ -86,10 +86,7 @@ scenarios = {
             start="expression",
             expected="""
           prefix_operation
-            operator
-              !
-              +
-              -
+            !+-
             a
           """,
         ),
@@ -98,10 +95,7 @@ scenarios = {
             expected="""
             postfix_operation
               a
-              operator
-                !
-                $
-                +
+              !$+
             """,
         ),
         "a +- b": Scenario(
@@ -109,13 +103,19 @@ scenarios = {
             expected="""
             binary_operation
               a
-              operator
-                +
-                -
+              +-
               b
             """,
         ),
-        # TODO: tight binary op
+        "a*/b": Scenario(
+            start="expression",
+            expected="""
+            binary_operation
+              a
+              */
+              b
+            """,
+        ),
     },
     "args": {
         "positional_single": Scenario(
@@ -453,7 +453,7 @@ scenarios = {
                 a
                 b
                 1
-              operator\t+
+              +
               path
                 c
                 d

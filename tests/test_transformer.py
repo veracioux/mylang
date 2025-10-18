@@ -297,7 +297,7 @@ class TestPrefixOperation:
         self.transformer = Transformer()
 
     def test_prefix_operation(self):
-        operator_tree = Tree("operator", [Token("OPERATOR", "-")])
+        operator_tree = Token("OPERATOR", "-")
         operand = Int(42)
         items = (operator_tree, operand)
         result = self.transformer.prefix_operation(items)
@@ -312,7 +312,7 @@ class TestPostfixOperation:
 
     def test_postfix_operation(self):
         operand = Int(42)
-        operator_tree = Tree("operator", [Token("OPERATOR", "!")])
+        operator_tree = Token("OPERATOR", "!")
         items = (operand, operator_tree)
         result = self.transformer.postfix_operation(items)
         assert isinstance(result, PostfixOperation)
@@ -326,7 +326,7 @@ class TestBinaryOperation:
 
     def test_binary_operation(self):
         left_operand = Int(10)
-        operator_tree = Tree("operator", [Token("OPERATOR", "+")])
+        operator_tree = Token("OPERATOR", "+")
         right_operand = Int(5)
         items = (left_operand, operator_tree, right_operand)
         result = self.transformer.binary_operation(items)

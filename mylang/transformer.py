@@ -80,14 +80,14 @@ class Transformer(_Transformer):
     def execution_block_single_statement(self, items: list[Object | Tree]):
         return StatementList.from_iterable([self.args(items)])
 
-    def prefix_operation(self, items: tuple[Tree, Object]):
-        return PrefixOperation(_operator_node_to_string(items[0]), items[1])
+    def prefix_operation(self, items: tuple[Token, Object]):
+        return PrefixOperation(items[0].value, items[1])
 
-    def postfix_operation(self, items: tuple[Object, Tree]):
-        return PostfixOperation(_operator_node_to_string(items[1]), items[0])
+    def postfix_operation(self, items: tuple[Object, Token]):
+        return PostfixOperation(items[1].value, items[0])
 
-    def binary_operation(self, items: tuple[Tree, Object, Object]):
-        return BinaryOperation(_operator_node_to_string(items[1]), [items[0], items[2]])
+    def binary_operation(self, items: tuple[Token, Object, Object]):
+        return BinaryOperation(items[1], [items[0], items[2]])
 
     def dots(self, items: list[Token]):
         return Dots(len(items[0].value))
