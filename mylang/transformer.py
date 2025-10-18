@@ -107,8 +107,3 @@ class Transformer(_Transformer):
 
     def wrapped_args(self, items: list[Object | Tree]):
         raise NotImplementedError
-
-
-def _operator_node_to_string(operator: Tree):
-    """The parsed operator yields a tree whose children are string tokens. This function merges them."""
-    return "".join(operator.children)
