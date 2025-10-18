@@ -1,14 +1,22 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring,invalid-name
 
+import pytest
 from lark import Token, Tree
 from mylang.transformer import Transformer
 from mylang.stdlib.core.func import StatementList
 from mylang.stdlib.core import (
     Args,
+    Array,
+    BinaryOperation,
     Bool,
     Dict,
+    Dots,
+    ExecutionBlock,
     Float,
     Int,
+    Path,
+    PostfixOperation,
+    PrefixOperation,
     String,
     null,
     undefined,
@@ -69,6 +77,18 @@ class TestTransformer:
         assert isinstance(result, String)
         assert result.value == "hello"
 
+    def test_ESCAPED_STRING_empty(self):
+        token = Token("ESCAPED_STRING", '""')
+        result = self.transformer.ESCAPED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == ""
+
+    def test_ESCAPED_STRING_complex_escapes(self):
+        token = Token("ESCAPED_STRING", '"\\n\\t\\r\\f\\b\\\\"')
+        result = self.transformer.ESCAPED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "\n\t\r\f\b\\"
+
     def test_ESCAPED_STRING(self):
         token = Token("ESCAPED_STRING", '"hello world"')
         result = self.transformer.ESCAPED_STRING(token)
@@ -76,10 +96,16 @@ class TestTransformer:
         assert result.value == "hello world"
 
     def test_ESCAPED_STRING_with_escapes(self):
-        token = Token("ESCAPED_STRING", '"hello\\nworld"')
+        token = Token("ESCAPED_STRING", r'"hello\nworld"')
         result = self.transformer.ESCAPED_STRING(token)
         assert isinstance(result, String)
         assert result.value == "hello\nworld"
+
+    def test_SINGLE_QUOTED_STRING_empty(self):
+        token = Token("SINGLE_QUOTED_STRING", "''")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == ""
 
     def test_SINGLE_QUOTED_STRING(self):
         token = Token("SINGLE_QUOTED_STRING", r"'hello world'")
@@ -104,6 +130,12 @@ class TestTransformer:
         result = self.transformer.SINGLE_QUOTED_STRING(token)
         assert isinstance(result, String)
         assert result.value == "path\to\file"
+
+    def test_SINGLE_QUOTED_STRING_unicode_escape(self):
+        token = Token("SINGLE_QUOTED_STRING", r"'\u0041'")
+        result = self.transformer.SINGLE_QUOTED_STRING(token)
+        assert isinstance(result, String)
+        assert result.value == "A"
 
     def test_SINGLE_QUOTED_STRING_with_single_quote_escape(self):
         token = Token("SINGLE_QUOTED_STRING", r"'It\'s working'")
@@ -130,9 +162,6 @@ class TestTransformer:
         assignment_tree = Tree("assignment", [String("key"), Int(42)])
         items = [assignment_tree]
 
-        # Mock the transform method to return the expected values
-        self.transformer.transform = lambda x: x
-
         result = self.transformer.args(items)
         assert isinstance(result, Args)
         assert result[String("key")] == Int(42)
@@ -140,9 +169,6 @@ class TestTransformer:
     def test_args_mixed_positional_and_keyed(self):
         assignment_tree = Tree("assignment", [String("key"), Int(42)])
         items = [String("positional"), assignment_tree]
-
-        # Mock the transform method to return the expected values
-        self.transformer.transform = lambda x: x
 
         result = self.transformer.args(items)
         assert isinstance(result, Args)
@@ -180,3 +206,132 @@ class TestTransformer:
         result = self.transformer.statement_list(statements)
         assert isinstance(result, StatementList)
         assert result == [Args("set", a=1)]
+
+    def test_array(self):
+        items = [String("a"), Int(1), Float(2.5)]
+        result = self.transformer.array(items)
+        assert isinstance(result, Array)
+        assert len(result) == 3
+        assert result[0] == String("a")
+        assert result[1] == Int(1)
+        assert result[2] == Float(2.5)
+
+    def test_array_empty(self):
+        items = []
+        result = self.transformer.array(items)
+        assert isinstance(result, Array)
+        assert len(result) == 0
+
+    def test_execution_block(self):
+        statement_list = StatementList.from_iterable([Args("echo", String("hello"))])
+        items = (statement_list,)
+        result = self.transformer.execution_block(items)
+        assert isinstance(result, ExecutionBlock)
+        assert len(result) == 1
+        assert result[0] == Args("echo", String("hello"))
+
+    def test_execution_block_single_statement(self):
+        items = [String("echo"), String("hello")]
+        result = self.transformer.execution_block_single_statement(items)
+        assert isinstance(result, StatementList)
+        assert len(result) == 1
+        assert isinstance(result[0], Args)
+
+    def test_prefix_operation(self):
+        operator_tree = Tree("operator", [Token("OPERATOR", "-")])
+        operand = Int(42)
+        items = (operator_tree, operand)
+        result = self.transformer.prefix_operation(items)
+        assert isinstance(result, PrefixOperation)
+        assert result.operator == "-"
+        assert result.operand == Int(42)
+
+    def test_postfix_operation(self):
+        operand = Int(42)
+        operator_tree = Tree("operator", [Token("OPERATOR", "!")])
+        items = (operand, operator_tree)
+        result = self.transformer.postfix_operation(items)
+        assert isinstance(result, PostfixOperation)
+        assert result.operator == "!"
+        assert result.operand == Int(42)
+
+    def test_binary_operation(self):
+        left_operand = Int(10)
+        operator_tree = Tree("operator", [Token("OPERATOR", "+")])
+        right_operand = Int(5)
+        items = (left_operand, operator_tree, right_operand)
+        result = self.transformer.binary_operation(items)
+        assert isinstance(result, BinaryOperation)
+        assert result.operator == "+"
+        assert result.operands == [Int(10), Int(5)]
+
+    def test_dots(self):
+        token = Token("DOTS", "...")
+        items = [token]
+        result = self.transformer.dots(items)
+        assert isinstance(result, Dots)
+        assert result.count == 3
+
+    def test_dots_single(self):
+        token = Token("DOTS", ".")
+        items = [token]
+        result = self.transformer.dots(items)
+        assert isinstance(result, Dots)
+        assert result.count == 1
+
+    def test_path(self):
+        items = [String("a"), String("b"), String("c")]
+        result = self.transformer.path(items)
+        assert isinstance(result, Path)
+        assert len(result.parts) == 3
+
+    def test_module_with_args(self):
+        args = Args("echo", String("hello"))
+        items = (args,)
+        result = self.transformer.module(items)
+        assert isinstance(result, StatementList)
+        assert len(result) == 1
+        assert result[0] == args
+
+    def test_module_with_statement_list(self):
+        statement_list = StatementList.from_iterable([Args("echo", String("hello"))])
+        items = (statement_list,)
+        result = self.transformer.module(items)
+        assert result == statement_list
+
+    def test_module_with_object(self):
+        obj = String("hello")
+        items = (obj,)
+        result = self.transformer.module(items)
+        assert isinstance(result, StatementList)
+        assert len(result) == 1
+        assert isinstance(result[0], Args)
+
+    def test_wrapped_args(self):
+        items = [String("test")]
+        with pytest.raises(NotImplementedError):
+            self.transformer.wrapped_args(items)
+
+    def test_SIGNED_NUMBER_zero(self):
+        token = Token("SIGNED_NUMBER", "0")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Int)
+        assert result.value == 0
+
+    def test_SIGNED_NUMBER_zero_float(self):
+        token = Token("SIGNED_NUMBER", "0.0")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Float)
+        assert result.value == 0.0
+
+    def test_SIGNED_NUMBER_large_int(self):
+        token = Token("SIGNED_NUMBER", "123456789012345678901234567890")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Int)
+        assert result.value == 123456789012345678901234567890
+
+    def test_SIGNED_NUMBER_scientific_float(self):
+        token = Token("SIGNED_NUMBER", "1.23e-4")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Float)
+        assert result.value == 1.23e-4
