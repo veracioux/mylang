@@ -1,4 +1,4 @@
-%import common.ESCAPED_STRING
+%import common.ESCAPED_STRING -> DOUBLE_QUOTED_STRING
 %import common.SIGNED_NUMBER -> _SIGNED_NUMBER
 %import common.WS_INLINE -> _WS_INLINE
 %import common.WS -> _WS
@@ -22,7 +22,7 @@ _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
 
 // Basic literals
 
-?string: ESCAPED_STRING | SINGLE_QUOTED_STRING | UNQUOTED_STRING
+?string: DOUBLE_QUOTED_STRING | SINGLE_QUOTED_STRING | UNQUOTED_STRING
 ?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
 
 // Operations and assignment

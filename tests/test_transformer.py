@@ -77,27 +77,27 @@ class TestTransformer:
         assert isinstance(result, String)
         assert result.value == "hello"
 
-    def test_ESCAPED_STRING_empty(self):
-        token = Token("ESCAPED_STRING", '""')
-        result = self.transformer.ESCAPED_STRING(token)
+    def test_DOUBLE_QUOTED_STRING_empty(self):
+        token = Token("DOUBLE_QUOTED_STRING", '""')
+        result = self.transformer.DOUBLE_QUOTED_STRING(token)
         assert isinstance(result, String)
         assert result.value == ""
 
-    def test_ESCAPED_STRING_complex_escapes(self):
-        token = Token("ESCAPED_STRING", '"\\n\\t\\r\\f\\b\\\\"')
-        result = self.transformer.ESCAPED_STRING(token)
+    def test_DOUBLE_QUOTED_STRING_complex_escapes(self):
+        token = Token("DOUBLE_QUOTED_STRING", '"\\n\\t\\r\\f\\b\\\\"')
+        result = self.transformer.DOUBLE_QUOTED_STRING(token)
         assert isinstance(result, String)
         assert result.value == "\n\t\r\f\b\\"
 
-    def test_ESCAPED_STRING(self):
-        token = Token("ESCAPED_STRING", '"hello world"')
-        result = self.transformer.ESCAPED_STRING(token)
+    def test_DOUBLE_QUOTED_STRING(self):
+        token = Token("DOUBLE_QUOTED_STRING", '"hello world"')
+        result = self.transformer.DOUBLE_QUOTED_STRING(token)
         assert isinstance(result, String)
         assert result.value == "hello world"
 
-    def test_ESCAPED_STRING_with_escapes(self):
-        token = Token("ESCAPED_STRING", r'"hello\nworld"')
-        result = self.transformer.ESCAPED_STRING(token)
+    def test_DOUBLE_QUOTED_STRING_with_escapes(self):
+        token = Token("DOUBLE_QUOTED_STRING", r'"hello\nworld"')
+        result = self.transformer.DOUBLE_QUOTED_STRING(token)
         assert isinstance(result, String)
         assert result.value == "hello\nworld"
 

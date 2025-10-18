@@ -44,7 +44,7 @@ class Transformer(_Transformer):
     def UNQUOTED_STRING(self, token: Token):
         return String(token.value)
 
-    def ESCAPED_STRING(self, token: Token):
+    def DOUBLE_QUOTED_STRING(self, token: Token):
         return String(eval(token.value))  # TODO: Replace or thoroughly test
 
     def SINGLE_QUOTED_STRING(self, token: Token):
