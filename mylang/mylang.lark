@@ -76,7 +76,8 @@ wrapped_args: "(" _args ")"
 
 // Expression - any expression that can be evaluated to produce a value
 
-_expression_not_path: string
+// Expression that can be used as a component within a path
+_expr_path_accepts: string
            | primitive
            | dict
            | execution_block
@@ -85,14 +86,14 @@ _expression_not_path: string
            | _any_operation
            | ("(" expression ")")
            | ("(" _WS* statement_list _WS* ")")
-?expression: _expression_not_path
+?expression: _expr_path_accepts
            | path
 
 // TODO: Disallow unparenthesized floats
 dots: DOTS
-path: (dots? (_expression_not_path _DOTS)+ _expression_not_path dots?)
-    | (dots _expression_not_path)
-    | (_expression_not_path dots)
+path: (dots? (_expr_path_accepts _DOTS)+ _expr_path_accepts dots?)
+    | (dots _expr_path_accepts)
+    | (_expr_path_accepts dots)
 
 module: _WS* (statement_list? | args | expression) _WS*
 
