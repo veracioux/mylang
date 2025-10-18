@@ -23,7 +23,7 @@ from mylang.stdlib.core import (
 )
 
 
-class TestTransformer:
+class TestPrimitive:
     def setup_method(self):
         self.transformer = Transformer()
 
@@ -70,6 +70,35 @@ class TestTransformer:
     def test_UNDEFINED(self):
         result = self.transformer.UNDEFINED(None)
         assert result is undefined
+
+    def test_SIGNED_NUMBER_zero(self):
+        token = Token("SIGNED_NUMBER", "0")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Int)
+        assert result.value == 0
+
+    def test_SIGNED_NUMBER_zero_float(self):
+        token = Token("SIGNED_NUMBER", "0.0")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Float)
+        assert result.value == 0.0
+
+    def test_SIGNED_NUMBER_large_int(self):
+        token = Token("SIGNED_NUMBER", "123456789012345678901234567890")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Int)
+        assert result.value == 123456789012345678901234567890
+
+    def test_SIGNED_NUMBER_scientific_float(self):
+        token = Token("SIGNED_NUMBER", "1.23e-4")
+        result = self.transformer.SIGNED_NUMBER(token)
+        assert isinstance(result, Float)
+        assert result.value == 1.23e-4
+
+
+class TestString:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_UNQUOTED_STRING(self):
         token = Token("UNQUOTED_STRING", "hello")
@@ -149,6 +178,11 @@ class TestTransformer:
         assert isinstance(result, String)
         assert result.value == 'He said "hello" to me'
 
+
+class TestArgs:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_args_positional_only(self):
         items = [String("a"), Int(1), Float(2.5)]
         result = self.transformer.args(items)
@@ -180,11 +214,21 @@ class TestTransformer:
         result = self.transformer.args(items)
         assert isinstance(result, Args)
 
+
+class TestDict:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_dict(self):
         items = [String("value")]
         result = self.transformer.dict(items)
         assert isinstance(result, Dict)
         assert result._m_dict_ == {Int(0): String("value")}
+
+
+class TestStatementList:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_statement_list(self):
         statements = [String("a"), Int(1), Bool(True)]
@@ -207,6 +251,11 @@ class TestTransformer:
         assert isinstance(result, StatementList)
         assert result == [Args("set", a=1)]
 
+
+class TestArray:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_array(self):
         items = [String("a"), Int(1), Float(2.5)]
         result = self.transformer.array(items)
@@ -221,6 +270,11 @@ class TestTransformer:
         result = self.transformer.array(items)
         assert isinstance(result, Array)
         assert len(result) == 0
+
+
+class TestExecutionBlock:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_execution_block(self):
         statement_list = StatementList.from_iterable([Args("echo", String("hello"))])
@@ -237,6 +291,11 @@ class TestTransformer:
         assert len(result) == 1
         assert isinstance(result[0], Args)
 
+
+class TestPrefixOperation:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_prefix_operation(self):
         operator_tree = Tree("operator", [Token("OPERATOR", "-")])
         operand = Int(42)
@@ -245,6 +304,11 @@ class TestTransformer:
         assert isinstance(result, PrefixOperation)
         assert result.operator == "-"
         assert result.operand == Int(42)
+
+
+class TestPostfixOperation:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_postfix_operation(self):
         operand = Int(42)
@@ -255,6 +319,11 @@ class TestTransformer:
         assert result.operator == "!"
         assert result.operand == Int(42)
 
+
+class TestBinaryOperation:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_binary_operation(self):
         left_operand = Int(10)
         operator_tree = Tree("operator", [Token("OPERATOR", "+")])
@@ -264,6 +333,11 @@ class TestTransformer:
         assert isinstance(result, BinaryOperation)
         assert result.operator == "+"
         assert result.operands == [Int(10), Int(5)]
+
+
+class TestDots:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_dots(self):
         token = Token("DOTS", "...")
@@ -279,11 +353,21 @@ class TestTransformer:
         assert isinstance(result, Dots)
         assert result.count == 1
 
+
+class TestPath:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_path(self):
         items = [String("a"), String("b"), String("c")]
         result = self.transformer.path(items)
         assert isinstance(result, Path)
         assert len(result.parts) == 3
+
+
+class TestModule:
+    def setup_method(self):
+        self.transformer = Transformer()
 
     def test_module_with_args(self):
         args = Args("echo", String("hello"))
@@ -307,31 +391,12 @@ class TestTransformer:
         assert len(result) == 1
         assert isinstance(result[0], Args)
 
+
+class TestWrappedArgs:
+    def setup_method(self):
+        self.transformer = Transformer()
+
     def test_wrapped_args(self):
         items = [String("test")]
         with pytest.raises(NotImplementedError):
             self.transformer.wrapped_args(items)
-
-    def test_SIGNED_NUMBER_zero(self):
-        token = Token("SIGNED_NUMBER", "0")
-        result = self.transformer.SIGNED_NUMBER(token)
-        assert isinstance(result, Int)
-        assert result.value == 0
-
-    def test_SIGNED_NUMBER_zero_float(self):
-        token = Token("SIGNED_NUMBER", "0.0")
-        result = self.transformer.SIGNED_NUMBER(token)
-        assert isinstance(result, Float)
-        assert result.value == 0.0
-
-    def test_SIGNED_NUMBER_large_int(self):
-        token = Token("SIGNED_NUMBER", "123456789012345678901234567890")
-        result = self.transformer.SIGNED_NUMBER(token)
-        assert isinstance(result, Int)
-        assert result.value == 123456789012345678901234567890
-
-    def test_SIGNED_NUMBER_scientific_float(self):
-        token = Token("SIGNED_NUMBER", "1.23e-4")
-        result = self.transformer.SIGNED_NUMBER(token)
-        assert isinstance(result, Float)
-        assert result.value == 1.23e-4
