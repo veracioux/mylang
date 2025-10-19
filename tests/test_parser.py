@@ -6,17 +6,6 @@ from mylang.parser import parser
 from mylang.stdlib.core import Args
 
 
-_Tree_repr = Tree.__repr__
-
-
-def Tree_repr(self: "Tree"):  # pylint: disable=invalid-name
-    print(self.pretty())
-    return _Tree_repr(self)
-
-
-Tree.__repr__ = Tree_repr
-
-
 @dataclasses.dataclass
 class Scenario:
     start: str
@@ -116,6 +105,45 @@ scenarios = {
               b
             """,
         ),
+        "ambiguity": {
+            "-a + b": Scenario(
+                start="expression",
+                expected="""
+                binary_operation
+                  prefix_operation
+                    -
+                    a
+                  +
+                  b
+                """,
+            ),
+            "-a!! + b": Scenario(
+                start="expression",
+                expected="""
+                binary_operation
+                  postfix_operation
+                    prefix_operation
+                      -
+                      a
+                    !!
+                  +
+                  b
+                """,
+            ),
+            "-a!+b/": Scenario(
+                start="expression",
+                expected="""
+                binary_operation
+                  prefix_operation
+                    -
+                    a
+                  !+
+                  postfix_operation
+                    b
+                    /
+                """,
+            ),
+        },
     },
     "args": {
         "positional_single": Scenario(
@@ -444,9 +472,44 @@ scenarios = {
               1
             """,
         ),
-        "tighter_than_binary_operation": Scenario(
+    },
+    "(path, operation)": {
+        "+a.b": Scenario(
             start="expression",
-            source="a.b.1 + c.d",
+            expected="""
+            prefix_operation
+              +
+              path
+                a
+                b
+            """,
+        ),
+        "+a.-b": Scenario(
+            start="expression",
+            expected="""
+            prefix_operation
+              +
+              path
+                a
+                prefix_operation
+                  -
+                  b
+            """,
+        ),
+        "+a.b!": Scenario(
+            start="expression",
+            expected="""
+            postfix_operation
+              prefix_operation
+                +
+                path
+                  a
+                  b
+              !
+            """,
+        ),
+        "a.b.1 + c.d": Scenario(
+            start="expression",
             expected="""
             binary_operation
               path
@@ -457,7 +520,7 @@ scenarios = {
               path
                 c
                 d
-            """,
+          """,
         ),
     },
     "module": {
@@ -509,7 +572,9 @@ def flatten_scenarios(scenarios, prefix=""):
             params.append((value.start, source, expected))
             ids.append(f"{prefix}|{key}" if prefix else key)
         else:
-            sub_params, sub_ids = flatten_scenarios(value, f"{prefix}|{key}" if prefix else key)
+            sub_params, sub_ids = flatten_scenarios(
+                value, f"{prefix}|{key}" if prefix else key
+            )
             params.extend(sub_params)
             ids.extend(sub_ids)
     return params, ids
@@ -521,10 +586,15 @@ params, ids = flatten_scenarios(scenarios)
 @pytest.mark.parametrize("start,source,expected", params, ids=ids)
 def test_parser(start: str, source: str, expected: str):
     tree = parser.parse(source, start=start)
-    assert isinstance(tree, (Token, Tree)), "Parsed result is neither a Token nor a Tree"
+    assert isinstance(tree, (Token, Tree)), (
+        "Parsed result is neither a Token nor a Tree"
+    )
     if isinstance(tree, Token):
         assert tree.value == expected.strip()
     else:
+        print("--- TREE ---")
+        print(tree.pretty(), end="")
+        print("--- END TREE ---")
         assert tree.pretty().strip() == textwrap.dedent(expected).strip()
 
 

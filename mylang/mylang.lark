@@ -1,5 +1,5 @@
 %import common.ESCAPED_STRING -> DOUBLE_QUOTED_STRING
-%import common.SIGNED_NUMBER -> _SIGNED_NUMBER
+%import common.SIGNED_NUMBER
 %import common.WS_INLINE -> _WS_INLINE
 %import common.WS -> _WS
 %import common.NEWLINE -> _NEWLINE
@@ -14,31 +14,18 @@ BOOL: "true" | "false"
 NULL: "null"
 UNDEFINED: "undefined"
 UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z_][a-z0-9_]*/i
-SIGNED_NUMBER.1: _SIGNED_NUMBER
-_DOTS: /\.+/
-DOTS: _DOTS
+DOTS: /\.+/
 _OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
+OPERATOR: _OPERATOR_SYMBOL+
+        | ("=" (_OPERATOR_SYMBOL | "=")+)
+        | ((_OPERATOR_SYMBOL | "=")+ "=")
 
 
 // Basic literals
 
+_signed_number.2: SIGNED_NUMBER // TODO REMOVE
 ?string: DOUBLE_QUOTED_STRING | SINGLE_QUOTED_STRING | UNQUOTED_STRING
 ?primitive: BOOL | NULL | UNDEFINED | SIGNED_NUMBER
-
-// Operations and assignment
-
-// TODO: Assignment could perhaps be a special case of binary operation
-assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
-OPERATOR: _OPERATOR_SYMBOL+
-        | ("=" (_OPERATOR_SYMBOL | "=")+)
-        | ((_OPERATOR_SYMBOL | "=")+ "=")
-// NOTE: The below precedence is set to obtain desired precedence within the
-// operator group, not globally
-prefix_operation: OPERATOR expression
-postfix_operation: expression OPERATOR
-binary_operation.3: (expression OPERATOR expression)
-                | (expression _WS+ OPERATOR _WS+ expression)
-_any_operation: prefix_operation | postfix_operation | binary_operation
 
 
 // Args
@@ -62,6 +49,7 @@ _statement: expression | args
 _statement_separation: (_WS_INLINE* (";" | _NEWLINE) _WS*)+
 // A single expression or multiple statements
 statement_list: (_statement _statement_separation)+ _statement?
+_wrapped_statement_list: "(" _WS* statement_list _WS* ")"
 execution_block_single_statement: (_positional_args _keyed_args?)
                                 | expression
 execution_block: "{" _WS* (statement_list | execution_block_single_statement) _WS* "}"
@@ -74,26 +62,45 @@ array.1: "(" _WS* [_positional_args] ")"
 wrapped_args: "(" _args ")"
 
 
+// Operations and assignment
+
+// TODO: Assignment could perhaps be a special case of binary operation
+assignment: expression _WS_INLINE* "=" _WS_INLINE* expression
+prefix_operation: OPERATOR (expr_4 | expr_5)
+postfix_operation: (expr_3 | expr_4 | expr_5) OPERATOR
+binary_operation: (expression OPERATOR expression)
+                | (expression _WS+ OPERATOR _WS+ expression)
+
+
 // Expression - any expression that can be evaluated to produce a value
 
-// Expression that can be used as a component within a path
-_expr_path_accepts: string
-           | primitive
-           | dict
-           | execution_block
-           | array
-           | wrapped_args
-           | _any_operation
-           | ("(" expression ")")
-           | ("(" _WS* statement_list _WS* ")")
-?expression: _expr_path_accepts
-           | path
+// N indicates "tightness" of binding; higher N binds tighter
+// This is used to control precedence where Lark's priorities are insufficient.
+?expr_1: binary_operation
+?expr_2: postfix_operation
+?expr_3: prefix_operation
+?expr_4: path | dots
+?expr_5: ("(" expression ")")
+       | string
+       | primitive
+       | dict
+       | array
+       | wrapped_args
+       | execution_block
+       | _wrapped_statement_list
+
+?expression: expr_5
+           | expr_4
+           | expr_3
+           | expr_2
+           | expr_1
 
 // TODO: Disallow unparenthesized floats
 dots: DOTS
-path: (dots? (_expr_path_accepts _DOTS)+ _expr_path_accepts dots?)
-    | (dots _expr_path_accepts)
-    | (_expr_path_accepts dots)
+_dot.2: "."
+path: (dots? expr_5 ((_dot | dots) (expr_5 | expr_3))+ dots*)
+    | (dots expr_5)
+    | (expr_5 dots)
 
 module: _WS* (statement_list? | args | expression) _WS*
 
