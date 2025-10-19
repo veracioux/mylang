@@ -10,7 +10,7 @@ from ..core._utils import expose, function_defined_as_class, FunctionAsClass, st
 
 # TODO: This is just a crude prototype
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class echo(Object, FunctionAsClass):
     """Echoes the input value to stdout."""
 

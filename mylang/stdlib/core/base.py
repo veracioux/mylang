@@ -13,11 +13,13 @@ from typing import (
     Any,
     Generic,
     Iterable,
-    Optional,
+    Iterator,
     TypeVar,
     final,
     overload,
 )
+
+from ._utils.object_contract import ObjectContract
 
 from ._utils import (
     expose,
@@ -30,33 +32,24 @@ from ._utils import (
 )
 
 
-T = TypeVar("T", bound="Object")
+T = TypeVar("T", bound="AnyObject")
 
 
 if TYPE_CHECKING:
     from .complex import String
     from .class_ import class_
+    from ._utils.types import AnyObject
 
 
 @expose
-class Object:
-    _m_name_: Optional[str]
-    """Name of the object, if a name other than __name__ is desired."""
-    _m_dict_: dict["Object", "Object"]
-    """Dictionary of the object's attributes."""
-    _m_array_: list["Object"]
-    """List of the object's items, if it is array-like."""
-
-    @overload
-    def __init__(self, *args: "Object", **kwargs: "Object"): ...
-
-    def __init__(self, *args: "Object", **kwargs: "Object"):
+class Object(ObjectContract):
+    def __init__(self, *args: Any, **kwargs: Any):
         if any(isinstance(arg, Args) for arg in args):
             positional = []
             keyed = {}
             for arg in args:
                 if isinstance(arg, Args):
-                    positional += arg[:]
+                    positional += list(arg[:])
                     keyed |= arg.keyed_dict()
                 else:
                     positional.append(arg)
@@ -66,6 +59,9 @@ class Object:
             self._m_init_(Args.from_dict(dict(enumerate(positional)) | keyed))
         else:
             self._m_init_(Args.from_dict(python_dict_from_args_kwargs(*args, **kwargs)))
+
+    def _m_init_(self, args, /):
+        assert isinstance(args, Args)
 
     def __repr__(self):
         parameters = inspect.signature(self.__init__).parameters
@@ -81,51 +77,6 @@ class Object:
 
     def __hash__(self):
         return id(self)
-
-    ### Special methods ###
-
-    def _m_init_(self, args: "Args", /):
-        """Initialize the object with the given Args."""
-        assert isinstance(args, Args)
-
-    def _m_repr_(self) -> "String":
-        """Return a string representation of the object that will be used in the mylang context."""
-        raise
-
-    def _m_str_(self) -> "String":
-        """Convert the object to a MyLang String."""
-        raise
-
-    def _m_getattr_(self, key: "Object", /) -> "Object":
-        """Get an attribute of the object by key."""
-        _ = key
-        raise
-
-    def _m_setattr_(self, key: "Object", value: "Object", /) -> None:
-        """Set an attribute of the object by key."""
-        _ = key, value
-        raise
-
-    @classmethod
-    def _m_classcall_(cls, args: "Args", /) -> "Object":
-        """Invoked when the class is called with the given Args."""
-        _ = cls, args
-        raise
-
-    def _m_call_(self, args: "Args", /) -> "Object":
-        """Invoked when an instance of the class is called with the given Args."""
-        _ = self, args
-        raise
-
-
-# These methods are defined in Object so one can inspect their docstrings from implementors.
-# But they should not exist by default unless defined by subclasses.
-del Object._m_repr_
-del Object._m_str_
-del Object._m_getattr_
-del Object._m_setattr_
-del Object._m_classcall_
-del Object._m_call_
 
 
 @expose
@@ -290,14 +241,14 @@ class Array(Object, Generic[T]):
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
         assert args.is_positional_only()
-        self._m_array_: list[Object] = list(args._m_dict_.values())
+        self._m_array_: list[T] = list(args._m_dict_.values())  # type: ignore
 
     # TODO: Rename to from_iterable
     @classmethod
     def from_iterable(cls, source: Iterable[T], /):
         obj = cls.__new__(cls)
         obj.__init__()
-        obj._m_array_: list[T] = [python_obj_to_mylang(x) for x in source]
+        obj._m_array_ = [python_obj_to_mylang(x) for x in source]
         return obj
 
     def __eq__(self, other):
@@ -314,8 +265,11 @@ class Array(Object, Generic[T]):
             return NotImplemented
         return Array.from_iterable((*self._m_array_, *other))
 
-    def __iter__(self) -> Iterable[T]:
+    def __iter__(self) -> Iterator[T]:
         return iter(self._m_array_)
+
+    def __next__(self) -> T:
+        raise NotImplementedError("Use iter() to get an iterator instead")
 
     def __len__(self):
         return len(self._m_array_)
@@ -323,13 +277,13 @@ class Array(Object, Generic[T]):
     @overload
     def __getitem__(self, key: slice, /) -> "Array[T]": ...
     @overload
-    def __getitem__(self, key: Any, /) -> "T": ...
+    def __getitem__(self, key: int, /) -> T: ...
 
-    def __getitem__(self, key: Any, /) -> T:
+    def __getitem__(self, key: int | slice, /):
         result = self._m_array_[key]
         if isinstance(result, list):
-            return Array.from_iterable(result)
-        return result
+            return Array.from_iterable(result)  # type: ignore
+        return result  # type: ignore
 
     def __repr__(self):
         return f"{self.__class__.__name__}.from_iterable({self._m_array_!r})"
@@ -353,7 +307,7 @@ class Dict(Object):
 
     def _m_init_(self, args: "Args", /):
         super()._m_init_(args)
-        self._m_dict_: dict[Object, Object] = args._m_dict_.copy()
+        self._m_dict_ = args._m_dict_.copy()
 
     def _m_repr_(self):
         from .complex import String
@@ -425,12 +379,12 @@ class Args(Dict):
         return {k: v for k, v in self._m_dict_.items() if not isinstance(k, Int)}
 
     @overload
-    def __getitem__(self, key: slice, /) -> Array[Object]: ...
+    def __getitem__(self, key: slice, /) -> Array["AnyObject"]: ...
 
     @overload
-    def __getitem__(self, key: Any, /) -> Object: ...
+    def __getitem__(self, key: Any, /) -> "AnyObject": ...
 
-    def __getitem__(self, key: Any, /) -> Object:
+    def __getitem__(self, key: Any, /) -> "AnyObject":
         """Get an item from the Args."""
         if isinstance(key, slice):
             from .primitive import Int
@@ -448,7 +402,7 @@ class Args(Dict):
         """Check if the Args contains a key."""
         return python_obj_to_mylang(key) in self._m_dict_
 
-    def __add__(self, other: "Args" | Iterable, /) -> "Args":
+    def __add__(self, other: "Args | Iterable", /) -> "Args":
         """Combine two Args objects."""
         if isinstance(other, self.__class__):
             positional = (*self[:], *other[:])
@@ -474,7 +428,7 @@ class Args(Dict):
             filter(
                 lambda x: x,
                 (
-                    ", ".join(repr_(arg.value) for arg in positional_args),
+                    ", ".join(repr_(arg).value for arg in positional_args),
                     ", ".join(f"{repr_(k)}={repr_(v)}" for k, v in keyed_args.items()),
                 ),
             )

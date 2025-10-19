@@ -20,7 +20,7 @@ TypeValue = TypeVar("TypeValue")
 class Primitive(Object):
     # TODO: Use weak caching
     @functools.cache
-    def __new__(cls, *args):
+    def __new__(cls, *_):
         return super().__new__(cls)
 
 
@@ -86,10 +86,10 @@ class Number(Scalar[TypeValue], Generic[TypeValue]):
         return Bool(self.value <= other.value)
 
     def __int__(self):
-        return int(self.value)
+        return int(self.value)  # type: ignore
 
     def __float__(self):
-        return float(self.value)
+        return float(self.value)  # type: ignore
 
 
 @expose
@@ -120,7 +120,8 @@ class Empty(Primitive, ABC):
 @final
 class Null(Empty):
     def _m_repr_(self):
-        return "null"
+        from . import String
+        return String("null")
 
 
 @expose

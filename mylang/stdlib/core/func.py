@@ -3,8 +3,6 @@ import os
 import pathlib
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, final
 
-from ._utils import get_actual_python_module_export, set_contextvar
-
 from ._context import (
     CatchSpec,
     internal_module_bridge,
@@ -14,6 +12,8 @@ from ._context import (
     StackFrame,
 )
 from ._utils import (
+    repr_,
+    get_actual_python_module_export,
     currently_called_func,
     expose,
     function_defined_as_class,
@@ -28,16 +28,17 @@ from ._utils import (
     expose_instance_attr,
     is_attr_exposed,
 )
-from ._utils.types import PythonContext
+from ._utils.types import AnyObject, PythonContext
 from .base import Args, Array, Dict, IncompleteExpression, Object, TypedObject
 from .complex import Path, String
 from .error import Error, ErrorCarrier
+from .primitive import undefined
 
 
 __all__ = ("fun", "call", "get", "set_", "use", "ref", "op", "export", "StatementList", "ExecutionBlock")
 
 
-TypeReturn = TypeVar("TypeReturn", bound=Object)
+TypeReturn = TypeVar("TypeReturn", bound=Object, default=Object)
 
 
 class _Symbols:
@@ -46,23 +47,23 @@ class _Symbols:
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 @expose_instance_attr("name", "parameters", "body")
 class fun(Object, FunctionAsClass, Generic[TypeReturn]):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
     _CALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
 
-    def __init__(self, name: Object, /, *parameters_and_body: Object, **kwargs):
+    def __init__(self, name: "AnyObject", /, *parameters_and_body: "AnyObject", **kwargs):
         # When somebody constructs fun(...), Python will run __init__ automatically. Since we already called it from
         # _m_classcall_, another call should do nothing
         if currently_called_func.get() is None:
             return
 
-        parameters_and_body = (
+        parameters_and_body_args = (
             parameters_and_body if isinstance(parameters_and_body, Args) else Args(*parameters_and_body)
         )
-        parameters = Args(*parameters_and_body[:-1]) + Args.from_dict(parameters_and_body.keyed_dict()) + Args(**kwargs)
-        body = parameters_and_body[-1]
+        parameters = Args(*parameters_and_body_args[:-1]) + Args.from_dict(parameters_and_body_args.keyed_dict()) + Args(**kwargs)
+        body = parameters_and_body_args[-1]
         assert isinstance(body, StatementList), "Body must be a StatementList"
         self.name = python_obj_to_mylang(name)
         self.parameters = parameters
@@ -85,13 +86,13 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         stack_frame = current_stack_frame.get()
         stack_frame.set_parent_lexical_scope(self.closure_lexical_scope)
         populate_locals_for_callable(stack_frame.locals, self.parameters, args)
-        return self.body.execute()
+        return self.body.execute()  # type: ignore
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name!r})"
 
     def _m_repr_(self):
-        return String(f"{{fun {self.name.value!r}}}")
+        return String(f"{{fun {repr_(self.name)}}}")
 
 
 @expose
@@ -118,7 +119,7 @@ class call(Object, FunctionAsClass):
                     Args.from_dict(python_dict_from_args_kwargs(func_key, *args, **kwargs)),
                 )
 
-    def __init__(self, func_key, *args, **kwargs):
+    def __init__(self, func_key: AnyObject, *args, **kwargs):
         super().__init__(func_key, *args, **kwargs)
 
     @classmethod
@@ -154,9 +155,10 @@ class call(Object, FunctionAsClass):
                 else:
                     raise
 
+
     @classmethod
-    def __resolve_callable_object(cls, key: Object) -> Object:
-        obj_to_call: Object
+    def __resolve_callable_object(cls, key: "AnyObject") -> "AnyObject":
+        obj_to_call: "AnyObject"
         if isinstance(_ref := key, ref):
             obj_to_call = _ref.obj
         else:
@@ -169,7 +171,7 @@ class call(Object, FunctionAsClass):
         return obj_to_call
 
     @classmethod
-    def __resolve_call_impl(cls, obj_to_call: Object):
+    def __resolve_call_impl(cls, obj_to_call: "AnyObject"):
         needs_new_stack_frame = True
 
         if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
@@ -213,7 +215,7 @@ class call(Object, FunctionAsClass):
                 if does_match:
                     nonlocal any_error_matched
                     any_error_matched = True
-                    original_body: StatementList = args[-1]
+                    assert isinstance(original_body := args[-1], StatementList)
                     if catch_spec.error_key is not None:
                         # Inject the error into the catch body, under the specified key
                         body = StatementList.from_iterable([
@@ -245,12 +247,12 @@ class call(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class get(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
     @classmethod
-    def _m_classcall_(cls, args: Args, /):
+    def _m_classcall_(cls, args: Args, /) -> "AnyObject":
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
         if isinstance(_ref := args[0], ref):
@@ -261,13 +263,13 @@ class get(Object, FunctionAsClass):
         obj = cls._caller_lexical_scope()
 
         for part in parts:
-            obj = getattr_(obj, part)
+            obj = getattr_(obj, part)  # type: ignore
 
-        return obj
+        return obj  # type: ignore
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class set_(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
     _m_name_ = "set"
@@ -295,7 +297,7 @@ class set_(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class use(Object, FunctionAsClass):
     """Use code from another file.
 
@@ -316,7 +318,7 @@ class use(Object, FunctionAsClass):
 
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
-    __cache: dict[str, Object] = {}
+    __cache: dict[Any, Object] = {}
     """Cache of loaded modules to avoid reloading. Keys are cache IDs, values are exported objects."""
 
     def __init__(self, source: str, /, *, use_cache=True):
@@ -449,7 +451,7 @@ class use(Object, FunctionAsClass):
         return exported_value, stack_frame.lexical_scope
 
     @classmethod
-    def _load_mylang_file(cls, path: os.PathLike):
+    def _load_mylang_file(cls, path: str | os.PathLike):
         """Load and execute a MyLang module from a file.
 
         Reads the file content and delegates to _load_mylang_module for execution.
@@ -660,7 +662,7 @@ class ExecutionBlock(StatementList, IncompleteExpression):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 @final
 class ref(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
@@ -672,7 +674,7 @@ class ref(Object, FunctionAsClass):
         self.obj = self._caller_stack_frame()[key]
 
     @classmethod
-    def to(cls, obj: Object, /):
+    def to(cls, obj: "AnyObject", /):
         """Create a reference to an object."""
         instance = super().__new__(cls)
         if isinstance(obj, ref):
@@ -682,7 +684,7 @@ class ref(Object, FunctionAsClass):
 
     @classmethod
     def _m_classcall_(cls, args: Args, /):
-        self = super().__new__(ref)
+        self = super().__new__(cls)
         key = args[0]
         self.__init__(key)
         return self
@@ -701,7 +703,7 @@ class ref(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 @final
 class op(Object, FunctionAsClass):
     """Invoke an operation by given operator in Polish notation."""
@@ -723,7 +725,7 @@ class op(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class export(Object, FunctionAsClass):
     """Marker class to indicate that an attribute should be exported from a module."""
 
@@ -751,3 +753,5 @@ class export(Object, FunctionAsClass):
 
         for key, obj in keyed.items():
             container_of_exports[key] = obj
+
+        return undefined

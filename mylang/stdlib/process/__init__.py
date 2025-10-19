@@ -5,7 +5,7 @@ from ..core._utils import FunctionAsClass, expose_obj_attr, function_defined_as_
 from ..core import Object, String
 
 
-@function_defined_as_class
+@function_defined_as_class()
 class run(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 

@@ -24,8 +24,18 @@ from .exposure import (
     get_actual_python_module_export,
 )
 
-
 from .context import require_parent_stack_frame, require_parent_lexical_scope, require_parent_locals
+
+from .object_contract import ObjectContract
+
+
+if TYPE_CHECKING:
+    from .._context import LocalsDict, LexicalScope
+    from ..base import Args, Object
+    from ..complex import String
+    from ..class_ import class_
+    from .types import AnyObject
+    from ..func import StatementList
 
 
 # Re-export
@@ -52,20 +62,14 @@ __all__ = (
     "require_parent_locals",
     "export_object_from_module",
     "get_actual_python_module_export",
+    "AnyObject",
 )
-
-
-if TYPE_CHECKING:
-    from .._context import LocalsDict
-    from ..base import Args, Object
-    from ..complex import String
-    from ..class_ import class_
 
 
 T = TypeVar("T")
 
 
-def python_obj_to_mylang(obj) -> "Object":
+def python_obj_to_mylang(obj: "AnyObject") -> "AnyObject":
     """Convert a Python object to a MyLang analog."""
     from ..base import Object
 
@@ -111,7 +115,7 @@ def python_dict_from_args_kwargs(*args, **kwargs):
     return dict(enumerate(args), **kwargs)
 
 
-def mylang_obj_to_python(obj: "Object"):
+def mylang_obj_to_python(obj: "AnyObject | dict[AnyObject, AnyObject]") -> Any:
     from ..base import Args, Dict, Object
     from ..complex import String
     from ..primitive import Bool, Scalar, null, undefined
@@ -139,13 +143,13 @@ def mylang_obj_to_python(obj: "Object"):
 TypeFunc = TypeVar("TypeFunc", bound=FunctionType)
 
 
-all_functions_defined_as_classes: set["FunctionAsClass"] = set()
+all_functions_defined_as_classes: set[type["FunctionAsClass"]] = set()
 
 
-TypeReturn = TypeVar("TypeReturn", bound="Object")
+TypeReturn = TypeVar("TypeReturn", bound="AnyObject")
 
 
-class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
+class FunctionAsClass(abc.ABC, Generic[TypeReturn], ObjectContract):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME: Optional[bool] = None
     """Indicates that `_m_classcall_` should receive a nested stack frame.
 
@@ -158,15 +162,22 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
     Cautiously override this attribute. It is intended for control flow
     functions that need direct access to the caller's stack frame.
     """
+    name: "AnyObject"
+    parameters: "Args"
+    body: "StatementList"
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
         from ..func import call, ref
 
-        return call(ref.to(self), *args, **kwargs)
+        return call(  # type: ignore
+            ref.to(self),
+            *args,
+            **kwargs,
+        )
 
     @classmethod
     @abc.abstractmethod
-    def _m_classcall_(cls, args: "Args", /) -> "Object":
+    def _m_classcall_(cls, args: "Args", /) -> "AnyObject":
         """Called by the `call` function.
 
         The `call` function is responsible for providing a fresh `StackFrame`
@@ -218,17 +229,21 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
 
         current_func = currently_called_func.get()
         if cls is call:  # `call` is a special case: it doesn't get currently_called_func set
-            return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+            return bool(cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME)
+        assert current_func is not None, f"{cls.__should_receive_new_stack_frame}: currently_called_func is None"
         if current_func.__name__ == "_m_classcall_":
-            return cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+            return bool(cls._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME)
         elif current_func.__name__ == "_m_call_":
-            return cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+            return bool(cls._CALL_SHOULD_RECEIVE_NEW_STACK_FRAME)
         else:
             raise NotImplementedError
 
 
-def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
-    def decorator(cls: FunctionAsClass):
+TypeFunctionAsClass = TypeVar("TypeFunctionAsClass", bound=type["FunctionAsClass"])
+
+
+def function_defined_as_class(*, monkeypatch_methods=True):
+    def decorator(cls: TypeFunctionAsClass) -> TypeFunctionAsClass:
         assert isinstance(cls, type) and issubclass(
             cls, FunctionAsClass
         ), f"Class {cls.__name__} should be a subclass of FunctionAsClass"
@@ -268,10 +283,7 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
         # TODO: initialize parameters and body
         return cls
 
-    if cls is not None:
-        return decorator(cls)
-    else:
-        return decorator
+    return decorator
 
 
 currently_called_func = ContextVar("currently_called_func", default=None)
@@ -307,12 +319,12 @@ def only_callable_by_call_decorator(func):
     return wrapper
 
 
-def _python_func_to_mylang(func: FunctionType) -> "Object":
+def _python_func_to_mylang(func: FunctionType | MethodType) -> "AnyObject":
     """Convert a Python function to a MyLang function."""
     from ..base import Args, Object
     from ..func import StatementList
 
-    @function_defined_as_class
+    @function_defined_as_class()
     class __func(Object, FunctionAsClass):
         _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
         if func.__name__ != "<lambda>":
@@ -350,19 +362,22 @@ def populate_locals_for_callable(
 
 
 # TODO: Implement python-like getattr attribute lookup
-def getattr_(obj: "Object", key: "Object"):
+def getattr_(obj: "AnyObject | LexicalScope", key: "AnyObject") -> "AnyObject":
     from .._context import LexicalScope, LocalsDict
-    from ..base import Dict, Object, TypedObject
+    from ..base import Object, TypedObject
     from ..complex import String
     from .types import PythonModuleWrapper
 
-    if hasattr(obj, "_m_getattr_"):
-        return obj._m_getattr_(key)
-    elif isinstance(obj, (Dict, LexicalScope, LocalsDict)):
+    if isinstance(obj, (LexicalScope, LocalsDict)):
         return obj[key]
+    elif hasattr(obj, "_m_getattr_"):
+        assert isinstance(obj, Object)
+        return obj._m_getattr_(key)
     elif isinstance(obj, PythonModuleWrapper):
         if isinstance(key, String) and is_attr_exposed(obj.module, key.value):
-            return getattr(obj.module, key.value)
+            result = getattr(obj.module, key.value)
+            assert isinstance(result, Object) or issubclass(result, FunctionAsClass)
+            return result
         else:
             assert False, f"Object {obj} has no attribute {key}"
     elif isinstance(obj, Object) or (isinstance(obj, type) and issubclass(obj, FunctionAsClass)):
@@ -428,7 +443,7 @@ def issubclass_(obj: "Object", type_: Union[type, "class_"]):
         return False
 
 
-def getname(obj: "Object | type[Object]"):
+def getname(obj: "AnyObject"):
     """Get the name of the object in the context of MyLang, if any."""
     from ..complex import String
     from ..func import fun
@@ -453,7 +468,7 @@ def iter_(obj: "Object"):
         raise NotImplementedError(f"Object {obj} is not iterable in MyLang")
 
 
-def repr_(obj: "Object | type[Object]") -> "String":
+def repr_(obj: "AnyObject") -> "String":
     """Get the string representation of the object in the context of MyLang."""
     from ..complex import String
     from ..base import Object, TypedObject

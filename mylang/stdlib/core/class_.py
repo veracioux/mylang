@@ -23,7 +23,7 @@ class _Symbols:
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 @expose_class_attr("init")
 class class_(Object, FunctionAsClass):
     _m_name_ = "class"

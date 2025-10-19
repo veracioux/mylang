@@ -24,7 +24,7 @@ class _LoopData:
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class if_(Object, FunctionAsClass):
     _m_name_ = "if"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
@@ -84,7 +84,7 @@ class if_(Object, FunctionAsClass):
         else:
             return undefined
 
-    @function_defined_as_class
+    @function_defined_as_class()
     class __Else(FunctionAsClass):
         _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 
@@ -96,7 +96,7 @@ class if_(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class return_(Object, FunctionAsClass):
     _m_name_ = "return"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
@@ -112,7 +112,7 @@ class return_(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class loop(Object, FunctionAsClass):
     """Loop forever, until a `break` statement is encountered, or a `while`
     condition is no longer true."""
@@ -143,7 +143,7 @@ class loop(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class for_(Object, FunctionAsClass):
     _m_name_ = "for"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
@@ -184,7 +184,7 @@ class _LoopControlFunction(Object, FunctionAsClass, abc.ABC):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class while_(_LoopControlFunction):
     _m_name_ = "while"
 
@@ -201,7 +201,7 @@ class while_(_LoopControlFunction):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class break_(_LoopControlFunction):
     """Break out of a loop."""
 
@@ -219,7 +219,7 @@ class break_(_LoopControlFunction):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class continue_(_LoopControlFunction):
     _m_name_ = "continue"
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
@@ -236,7 +236,7 @@ class continue_(_LoopControlFunction):
 
 # TODO: Maybe move somewhere else
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class ignore(Object, FunctionAsClass):
     """Do nothing. Ignores all its arguments."""
 
@@ -248,7 +248,7 @@ class ignore(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class try_(Object, FunctionAsClass):
     _m_name_ = "try"
 
@@ -281,7 +281,7 @@ class try_(Object, FunctionAsClass):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class throw(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
 

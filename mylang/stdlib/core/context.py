@@ -29,7 +29,7 @@ class Context(Dict):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 @expose_class_attr("get")
 class context(Object, FunctionAsClass):
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = True
@@ -57,7 +57,7 @@ class context(Object, FunctionAsClass):
             if context is not None:
                 return context
             stack_frame = stack_frame.parent
-        
+
         return Context()
 
 

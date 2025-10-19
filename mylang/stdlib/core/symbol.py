@@ -6,7 +6,7 @@ from .base import Object
 
 @expose
 @expose_instance_attr("name")
-@function_defined_as_class
+@function_defined_as_class()
 class Symbol(Object, FunctionAsClass):
     """A unique symbol with a name."""
     _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False

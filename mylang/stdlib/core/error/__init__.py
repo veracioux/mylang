@@ -32,7 +32,7 @@ class ErrorCarrier(Exception):
 
 
 @expose
-@function_defined_as_class
+@function_defined_as_class()
 class error(Object, FunctionAsClass):
     """Convenience function to create a custom error"""
 

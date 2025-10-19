@@ -10,9 +10,10 @@ from contextvars import ContextVar
 
 if TYPE_CHECKING:
     from .func import StatementList
+    from ._utils import AnyObject
 
 
-class LocalsDict(IdentityDict[Any, Object]):
+class LocalsDict(IdentityDict[Any, "AnyObject"]):
     def __contains__(self, key, /) -> bool:
         from ._utils import python_obj_to_mylang
         return self._KeyWrapper(python_obj_to_mylang(key)) in self._dict
@@ -50,7 +51,7 @@ class LexicalScope:
         Useful for context flow statements to communicate with each other.
         """
 
-    def __getitem__(self, key: Any) -> Object:
+    def __getitem__(self, key: Any) -> "AnyObject":
         from ._utils import python_obj_to_mylang
         key = python_obj_to_mylang(key)
         if key in self.locals:
@@ -123,7 +124,7 @@ class StackFrame:
         if self.parent is not None:
             self.set_parent_lexical_scope(self.parent.lexical_scope)
 
-    def __getitem__(self, key: Any) -> Object:
+    def __getitem__(self, key: Any) -> "AnyObject":
         return self.lexical_scope[key]
 
     def __enter__(self):
@@ -142,7 +143,7 @@ class StackFrame:
         return f"StackFrame(depth={self.depth})"
 
 
-current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)
+current_stack_frame = ContextVar[StackFrame]("stack_frame", default=None)  # type: ignore
 """The current stack frame."""
 
 

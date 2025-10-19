@@ -1,7 +1,15 @@
 from types import ModuleType
-from typing import Any, Generic, Sequence, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, Sequence, TypeVar, Union
 
 from ..base import Object
+
+
+if TYPE_CHECKING:
+    from . import FunctionAsClass
+
+
+AnyObject = Union[Object, "FunctionAsClass", type["FunctionAsClass"]]
+"""A type that can represent any MyLang object, including functions defined as classes."""
 
 
 class PythonModuleWrapper(Object):
