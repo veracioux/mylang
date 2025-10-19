@@ -43,7 +43,7 @@ class error(Object, FunctionAsClass):
         from ..class_ import class_
         from ..func import StatementList, ref
 
-        Err = class_(key, ref.of(base), StatementList())
+        Err = class_(key, ref.to(base), StatementList())
 
         def _m_str_(*args):
             return String(message or "") if args else key

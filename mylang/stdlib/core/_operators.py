@@ -68,14 +68,14 @@ def le(a, b):
 def dollar(a):
     from .func import call, ref, get
 
-    return call._m_classcall_(Args(ref.of(get), a))
+    return call._m_classcall_(Args(ref.to(get), a))
 
 
 @_op("&", convert_func_to_mylang=False)
 def ampersand(a):
     from .func import call, ref
 
-    return call._m_classcall_(Args(ref.of(ref), a))
+    return call._m_classcall_(Args(ref.to(ref), a))
 
 
 @_op("!")

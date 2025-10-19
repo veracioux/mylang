@@ -58,14 +58,14 @@ class if_(Object, FunctionAsClass):
 
                     assert len(orig_statement) == 2, "else must have exactly 1 argument"
                     assert i == len(statement_list) - 1, "else must be the last statement in an if-else block"
-                    modified_statement_list[i][0] = ref.of(call)
-                    modified_statement_list[i][1] = ref.of(cls.__Else)
+                    modified_statement_list[i][0] = ref.to(call)
+                    modified_statement_list[i][1] = ref.to(cls.__Else)
                 else:
                     assert (
                         orig_statement.is_positional_only() and len(orig_statement) == 2
                     ), "condition statement must have exactly 2 arguments"
                     # Replace the first argument with a ref of `if` (the simple case with a single condition)
-                    modified_statement_list[i][0] = ref.of(cls)
+                    modified_statement_list[i][0] = ref.to(cls)
 
             cls._caller_stack_frame().lexical_scope.custom_data[_Symbols.CURRENT_IF_BLOCK_DATA] = cls.__IfBlockData(
                 modified_statement_list

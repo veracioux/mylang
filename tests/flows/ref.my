@@ -1,0 +1,10 @@
+fun f (
+    return F
+)
+
+a = &f
+
+echo "{f} returned" {f}   # F
+echo "{&f} returned" {&f} # F
+echo "{a} returned" {a}   # F
+echo "{&a} returned" {&a} # F

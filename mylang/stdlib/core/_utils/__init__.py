@@ -162,7 +162,7 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn]):
     def __call__(self, *args, **kwargs) -> TypeReturn:
         from ..func import call, ref
 
-        return call(ref.of(self), *args, **kwargs)
+        return call(ref.to(self), *args, **kwargs)
 
     @classmethod
     @abc.abstractmethod
@@ -261,7 +261,7 @@ def function_defined_as_class(cls=None, /, *, monkeypatch_methods=True):
                 if currently_called_func.get() is __new__:
                     with set_contextvar(currently_called_func, cls._m_classcall_):
                         return cls._m_classcall_(*args, **kwargs)
-                return call(ref.of(cls), *args, **kwargs)
+                return call(ref.to(cls), *args, **kwargs)
 
             cls.__new__ = __new__
 

@@ -178,7 +178,7 @@ class Test_call:
         self.assert_result_correct(result)
 
     def test_call_ref_of_func(self):
-        result = call(ref.of(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
+        result = call(ref.to(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
         self.assert_result_correct(result)
 
     def test_call_call(self):
@@ -190,17 +190,17 @@ class Test_call:
 
     def test_call_ref_of_call(self):
         result = call(
-            ref.of(call),
-            Args(ref.of(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
+            ref.to(call),
+            Args(ref.to(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
         )
         self.assert_result_correct(result)
 
     def test_call_ref_of_call_ref_of_call(self):
         result = call(
             Args(
-                ref.of(call),
-                ref.of(call),
-                ref.of(self.func),
+                ref.to(call),
+                ref.to(call),
+                ref.to(self.func),
                 "arg0",
                 "arg1",
                 kwarg1="KWARG1",
@@ -274,7 +274,7 @@ class Test_get:
 
     def test_get_ref(self):
         obj = Object()
-        result = get(ref.of(obj))
+        result = get(ref.to(obj))
         assert result is obj
 
     def test_get_non_existing_key(self):
@@ -310,8 +310,8 @@ class Test_set_get:
 class Test_ref:
     def test_ref_ref(self):
         obj = Object()
-        ref_obj = ref.of(obj)
-        ref_ref_obj = ref.of(ref_obj)
+        ref_obj = ref.to(obj)
+        ref_ref_obj = ref.to(ref_obj)
         assert ref_ref_obj.obj is obj
 
 

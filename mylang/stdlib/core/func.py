@@ -125,25 +125,10 @@ class call(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         func_key, rest = args[0], args[1:]
 
-        # `call` is special, it operates in the caller's stack frame
         caller_stack_frame = cls._caller_stack_frame()
 
-        obj_to_call: Object
-        if isinstance(_ref := func_key, ref):
-            obj_to_call = _ref.obj
-        else:
-            with set_contextvar(currently_called_func, get._m_classcall_):
-                obj_to_call = get._m_classcall_(Args(func_key))
-
-        needs_new_stack_frame = True
-
-        if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
-            # Function defined as class
-            python_callable = obj_to_call._m_classcall_
-            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
-        else:
-            # Regular MyLang callable
-            python_callable = obj_to_call._m_call_
+        obj_to_call = cls.__resolve_callable_object(func_key)
+        python_callable, needs_new_stack_frame = cls.__resolve_call_impl(obj_to_call)
 
         with (
             set_contextvar(currently_called_func, python_callable),
@@ -168,6 +153,34 @@ class call(Object, FunctionAsClass):
                         raise
                 else:
                     raise
+
+    @classmethod
+    def __resolve_callable_object(cls, key: Object) -> Object:
+        obj_to_call: Object
+        if isinstance(_ref := key, ref):
+            obj_to_call = _ref.obj
+        else:
+            with set_contextvar(currently_called_func, get._m_classcall_):
+                obj_to_call = get._m_classcall_(Args(key))
+
+        if isinstance(_ref := obj_to_call, ref):
+            obj_to_call = _ref.obj
+
+        return obj_to_call
+
+    @classmethod
+    def __resolve_call_impl(cls, obj_to_call: Object):
+        needs_new_stack_frame = True
+
+        if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
+            # Function defined as class
+            python_callable = obj_to_call._m_classcall_
+            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME if obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None else True
+        else:
+            # Regular MyLang callable
+            python_callable = obj_to_call._m_call_
+
+        return python_callable, needs_new_stack_frame
 
     @classmethod
     def __process_caught_error(cls, e: Error | Exception, catch_spec: CatchSpec) -> Optional[Object]:
@@ -205,7 +218,7 @@ class call(Object, FunctionAsClass):
                         # Inject the error into the catch body, under the specified key
                         body = StatementList.from_iterable([
                             Args.from_dict({
-                                0: ref.of(set_),
+                                0: ref.to(set_),
                                 catch_spec.error_key: (
                                     e
                                     if isinstance(e, Object)
@@ -221,7 +234,7 @@ class call(Object, FunctionAsClass):
                     return body.execute()
 
         catch_body = StatementList.from_iterable(
-            (Args(ref.of(execute_if_error_matches)) + args for args in catch_spec.body)
+            (Args(ref.to(execute_if_error_matches)) + args for args in catch_spec.body)
         )
         value = catch_body.execute()
 
@@ -240,10 +253,10 @@ class get(Object, FunctionAsClass):
     def _m_classcall_(cls, args: Args, /):
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
-        if isinstance(args[0], ref):
-            return args[0].obj
+        if isinstance(_ref := args[0], ref):
+            return _ref.obj
 
-        parts = args[0].parts if isinstance(args[0], Path) else (args[0],)
+        parts = path.parts if isinstance(path := args[0], Path) else (args[0],)
 
         obj = cls._caller_lexical_scope()
 
@@ -659,7 +672,7 @@ class ref(Object, FunctionAsClass):
         self.obj = self._caller_stack_frame()[key]
 
     @classmethod
-    def of(cls, obj: Object, /):
+    def to(cls, obj: Object, /):
         """Create a reference to an object."""
         instance = super().__new__(cls)
         if isinstance(obj, ref):

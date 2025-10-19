@@ -187,6 +187,21 @@ animal makes a sound
     assert captured.err == ""
 
 
+def test_ref(capsys: CaptureFixture[str]):
+    execute_module("ref.my")
+    captured = capsys.readouterr()
+
+    assert (
+        captured.out.strip()
+        == """
+{f} returned F
+{&f} returned F
+{a} returned F
+{&a} returned F
+    """.strip()
+    )
+
+
 def test_errors(capsys: CaptureFixture[str]):
     execute_module("errors.my")
     captured = capsys.readouterr()
