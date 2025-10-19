@@ -2,22 +2,22 @@ context c1
 c1.a = 2
 
 fun f1 (
-    echo "f1: $c1.a is" $(c1.a)
+    echo "f1: $c1.a is" $c1.a
     f11
     context c2
-    echo "f1: $c2.a is" $(c2.a)
+    echo "f1: $c2.a is" $c2.a
     f12
 )
 
 fun f11 (
     c = {context.get}
-    echo "f11: $c.a" $(c.a)
+    echo "f11: $c.a" $c.a
 )
 
 fun f12 (
     return
     c = {context.get}
-    echo "f12: $c.a" $(c.a)
+    echo "f12: $c.a" $c.a
 )
 
 f1
