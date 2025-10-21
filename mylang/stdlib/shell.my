@@ -5,7 +5,7 @@ export user_prompt = {
 }
 
 # Modify the get function for the shell
-orig_get = &get
+orig_get = *get
 fun get arg (
     if ($arg) :? $Int (
         echo hi
@@ -14,5 +14,5 @@ fun get arg (
 )
 
 # fun _activate (
-    
+
 # )

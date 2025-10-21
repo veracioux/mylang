@@ -2,7 +2,7 @@
 
 import pytest
 
-from mylang.stdlib.core import ref, return_
+from mylang.stdlib.core import Ref, return_
 from mylang.stdlib.core._context import LocalsDict, StackFrame, current_stack_frame
 from mylang.stdlib.core._utils import (
     function_defined_as_class,
@@ -178,7 +178,7 @@ class Test_call:
         self.assert_result_correct(result)
 
     def test_call_ref_of_func(self):
-        result = call(ref.to(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
+        result = call(Ref(self.func), Args("arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"))
         self.assert_result_correct(result)
 
     def test_call_call(self):
@@ -190,17 +190,17 @@ class Test_call:
 
     def test_call_ref_of_call(self):
         result = call(
-            ref.to(call),
-            Args(ref.to(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
+            Ref(call),
+            Args(Ref(self.func), "arg0", "arg1", kwarg1="KWARG1", kwarg2="KWARG2"),
         )
         self.assert_result_correct(result)
 
     def test_call_ref_of_call_ref_of_call(self):
         result = call(
             Args(
-                ref.to(call),
-                ref.to(call),
-                ref.to(self.func),
+                Ref(call),
+                Ref(call),
+                Ref(self.func),
                 "arg0",
                 "arg1",
                 kwarg1="KWARG1",
@@ -274,7 +274,7 @@ class Test_get:
 
     def test_get_ref(self):
         obj = Object()
-        result = get(ref.to(obj))
+        result = get(Ref(obj))
         assert result is obj
 
     def test_get_non_existing_key(self):
@@ -307,11 +307,11 @@ class Test_set_get:
         assert result == String("value")
 
 
-class Test_ref:
+class TestRef:
     def test_ref_ref(self):
         obj = Object()
-        ref_obj = ref.to(obj)
-        ref_ref_obj = ref.to(ref_obj)
+        ref_obj = Ref(obj)
+        ref_ref_obj = Ref(ref_obj)
         assert ref_ref_obj.obj is obj
 
 

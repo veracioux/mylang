@@ -66,16 +66,24 @@ def le(a, b):
 
 @_op("$", convert_func_to_mylang=False)
 def dollar(a):
-    from .func import call, ref, get
+    from . import call, Ref, get
 
-    return call._m_classcall_(Args(ref.to(get), a))
+    return call._m_classcall_(Args(Ref(get), a))
+
+
+# TODO: Add support for operator overloading
+# @_op("*", convert_func_to_mylang=False)
+# def star(a):
+#     from . import Ref
+
+#     return Ref.lookup(a)
 
 
 @_op("&", convert_func_to_mylang=False)
 def ampersand(a):
-    from .func import call, ref
+    from . import Ref
 
-    return call._m_classcall_(Args(ref.to(ref), a))
+    return Ref.to(a)
 
 
 @_op("!")

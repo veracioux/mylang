@@ -167,10 +167,10 @@ class FunctionAsClass(abc.ABC, Generic[TypeReturn], ObjectContract):
     body: "StatementList"
 
     def __call__(self, *args, **kwargs) -> TypeReturn:
-        from ..func import call, ref
+        from .. import call, Ref
 
         return call(  # type: ignore
-            ref.to(self),
+            Ref(self),
             *args,
             **kwargs,
         )
@@ -271,12 +271,13 @@ def function_defined_as_class(*, monkeypatch_methods=True):
 
             # Make sure that cls(...) will call the function via `call`
             def __new__(cls, *args, **kwargs):
-                from ..func import call, ref
+                from ..func import call
+                from ..special import Ref
 
                 if currently_called_func.get() is __new__:
                     with set_contextvar(currently_called_func, cls._m_classcall_):
                         return cls._m_classcall_(*args, **kwargs)
-                return call(ref.to(cls), *args, **kwargs)
+                return call(Ref.to(cls), *args, **kwargs)
 
             cls.__new__ = __new__
 
@@ -488,7 +489,7 @@ def repr_(obj: "AnyObject") -> "String":
     return String(f"{{TODO: str: {obj!r}}}")
 
 
-def str_(obj: "Object | type[Object]") -> "String":
+def str_(obj: "AnyObject") -> "String":
     from ..complex import String
     from ..base import TypedObject
 

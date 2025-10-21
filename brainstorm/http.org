@@ -26,8 +26,8 @@
       )
   }
 
-  status = &response.status
-  headers = &response.headers
-  body = &response.body
+  status = *response.status
+  headers = *response.headers
+  body = *response.body
 #+end_src
 * TODO Server

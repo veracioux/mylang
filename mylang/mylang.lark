@@ -15,7 +15,7 @@ NULL: "null"
 UNDEFINED: "undefined"
 UNQUOTED_STRING: /(?!true\b|false\b|null\b|undefined\b)[a-z_][a-z0-9_]*/i
 DOTS: /\.+/
-_OPERATOR_SYMBOL: /[+\-*\/%&|^~!<>?:@\$\\`]/
+_OPERATOR_SYMBOL: /[+\-\*\/%&|^~!<>?:@\$\\`]/
 OPERATOR: _OPERATOR_SYMBOL+
         | ("=" (_OPERATOR_SYMBOL | "=")+)
         | ((_OPERATOR_SYMBOL | "=")+ "=")

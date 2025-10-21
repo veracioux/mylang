@@ -2,7 +2,7 @@
 
 * Syntax
 #+begin_src shell
-  test [&Target | .property | (&Target1, &Target2)] "description" (
+  test [*Target | .property | (*Target1, *Target2)] "description" (
       pseudo group Optional (
           before_each (
               # Code to run before each test
@@ -24,7 +24,7 @@
               pseudo group prep (
                   # Mocking must be intuitive and syntax-light
                   # Mocking is intelligent - it knows how to handle different types of target
-                  mock &Target (
+                  mock *Target (
                       fun internal_func args (
                           return return_value
                       )

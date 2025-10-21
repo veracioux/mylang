@@ -40,10 +40,9 @@ class error(Object, FunctionAsClass):
 
     @classmethod
     def _create(cls, key: String, message: Optional[String] = None, /, base: type[Error] = Error):
-        from ..class_ import class_
-        from ..func import StatementList, ref
+        from .. import StatementList, Ref, class_
 
-        Err = class_(key, ref.to(base), StatementList())
+        Err = class_(key, Ref(base), StatementList())
 
         def _m_str_(*args):
             return String(message or "") if args else key

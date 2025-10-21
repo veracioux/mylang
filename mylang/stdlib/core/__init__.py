@@ -33,11 +33,11 @@ from .base import (
     UnaryOperation,
     TypedObject,
 )
-from .func import fun, call, set_, get, use, ref, op, export, StatementList, ExecutionBlock
+from .func import fun, call, set_, get, use, op, export, StatementList, ExecutionBlock
 from .flow import if_, return_, loop, while_, break_, continue_, throw, try_, for_
 from .class_ import class_
 from .error import Error, error
-from .symbol import Symbol, symbol
+from .special import Symbol, symbol, Ref
 from .context import Context, context
 
 __all__ = (
@@ -72,7 +72,7 @@ __all__ = (
     "set_",
     "get",
     "use",
-    "ref",
+    "Ref",
     "export",
     "StatementList",
     "ExecutionBlock",

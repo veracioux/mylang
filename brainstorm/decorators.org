@@ -72,7 +72,7 @@ Example:
 #+begin_src shell
   fun log_calls func (
       fun wrapper arg (
-          pseudo log "Calling function: " &func.name
+          pseudo log "Calling function: " *func.name
           return {func arg}
       )
       return $wrapper

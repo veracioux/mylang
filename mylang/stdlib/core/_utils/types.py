@@ -6,9 +6,10 @@ from ..base import Object
 
 if TYPE_CHECKING:
     from . import FunctionAsClass
+    from .. import Error
 
 
-AnyObject = Union[Object, "FunctionAsClass", type["FunctionAsClass"]]
+AnyObject = Union[Object, "FunctionAsClass", type["FunctionAsClass"], "Error", type["Error"]]
 """A type that can represent any MyLang object, including functions defined as classes."""
 
 

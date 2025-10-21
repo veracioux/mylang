@@ -35,7 +35,7 @@ from .error import Error, ErrorCarrier
 from .primitive import undefined
 
 
-__all__ = ("fun", "call", "get", "set_", "use", "ref", "op", "export", "StatementList", "ExecutionBlock")
+__all__ = ("fun", "call", "get", "set_", "use", "op", "export", "StatementList", "ExecutionBlock")
 
 
 TypeReturn = TypeVar("TypeReturn", bound=Object, default=Object)
@@ -158,15 +158,16 @@ class call(Object, FunctionAsClass):
 
     @classmethod
     def __resolve_callable_object(cls, key: "AnyObject") -> "AnyObject":
+        from . import Ref
         obj_to_call: "AnyObject"
-        if isinstance(_ref := key, ref):
-            obj_to_call = _ref.obj
+        if isinstance(ref := key, Ref):
+            obj_to_call = ref.obj
         else:
             with set_contextvar(currently_called_func, get._m_classcall_):
                 obj_to_call = get._m_classcall_(Args(key))
 
-        if isinstance(_ref := obj_to_call, ref):
-            obj_to_call = _ref.obj
+        if isinstance(ref := obj_to_call, Ref):
+            obj_to_call = ref.obj
 
         return obj_to_call
 
@@ -191,6 +192,7 @@ class call(Object, FunctionAsClass):
         If an error type matches, execute the corresponding body and return its
         value. If no error type matches, return None.
         """
+        from . import Ref
         any_error_matched = False
         caller_stack_frame = cls._caller_stack_frame()
 
@@ -220,7 +222,7 @@ class call(Object, FunctionAsClass):
                         # Inject the error into the catch body, under the specified key
                         body = StatementList.from_iterable([
                             Args.from_dict({
-                                0: ref.to(set_),
+                                0: Ref(set_),
                                 catch_spec.error_key: (
                                     e
                                     if isinstance(e, Object)
@@ -236,7 +238,7 @@ class call(Object, FunctionAsClass):
                     return body.execute()
 
         catch_body = StatementList.from_iterable(
-            (Args(ref.to(execute_if_error_matches)) + args for args in catch_spec.body)
+            (Args(Ref(execute_if_error_matches)) + args for args in catch_spec.body)
         )
         value = catch_body.execute()
 
@@ -253,10 +255,11 @@ class get(Object, FunctionAsClass):
 
     @classmethod
     def _m_classcall_(cls, args: Args, /) -> "AnyObject":
+        from . import Ref
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
-        if isinstance(_ref := args[0], ref):
-            return _ref.obj
+        if isinstance(ref := args[0], Ref):
+            return ref.obj
 
         parts = path.parts if isinstance(path := args[0], Path) else (args[0],)
 
@@ -659,47 +662,6 @@ class ExecutionBlock(StatementList, IncompleteExpression):
         with nested_stack_frame() as stack_frame:
             stack_frame.set_parent_lexical_scope(caller_stack_frame.lexical_scope)
             return super().execute()
-
-
-@expose
-@function_defined_as_class()
-@final
-class ref(Object, FunctionAsClass):
-    _CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME = False
-
-    def __init__(self, key: Object):
-        # FIXME: For some reason `ref 1` doesn't throw, even though I didn't
-        # explicitly assign set 1=...
-
-        self.obj = self._caller_stack_frame()[key]
-
-    @classmethod
-    def to(cls, obj: "AnyObject", /):
-        """Create a reference to an object."""
-        instance = super().__new__(cls)
-        if isinstance(obj, ref):
-            obj = obj.obj
-        instance.obj = obj
-        return instance
-
-    @classmethod
-    def _m_classcall_(cls, args: Args, /):
-        self = super().__new__(cls)
-        key = args[0]
-        self.__init__(key)
-        return self
-
-    def __str__(self):
-        return f"{self.__class__.__name__}.of({self.obj})"
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}.of({repr(self.obj)})"
-
-    def _m_str_(self):
-        return self.obj._m_str_()
-
-    def _m_repr_(self):
-        return self.obj._m_repr_()
 
 
 @expose
