@@ -19,8 +19,7 @@
 #+begin_src shell
   response = {
       # Emulates the structure of an actual HTTP request
-      http (
-          GET http://host:port/v1/resources?q1=v1&q2=v2
+      http GET http://host:port/v1/resources?q1=v1&q2=v2 1.1 (
           accept = "application/json"
           "x-api-key" = "your_api_key_here"
       )
