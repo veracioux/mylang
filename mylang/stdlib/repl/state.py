@@ -25,7 +25,9 @@ class InteractiveTextBuffer:
         """Insert character at the current cursor position."""
         moved_cursor = self.cursor.moved(0, 1)
         if moved_cursor in self:
-            self._content[moved_cursor.row] = _str_replace(self._content[moved_cursor.row], self.cursor.col, char)
+            self._content[moved_cursor.row] = _str_replace(
+                self._content[moved_cursor.row], self.cursor.col, char
+            )
         elif not self._content:
             self._content.append(char)
         else:
@@ -41,7 +43,9 @@ class InteractiveTextBuffer:
             prev_line = self._content[self.cursor.row - 1]
             self.cursor = Point(self.cursor.row - 1, len(prev_line) - 1)
         else:
-            self._content[self.cursor.row] = _str_replace(self._content[self.cursor.row], self.cursor.col - 1, "")
+            self._content[self.cursor.row] = _str_replace(
+                self._content[self.cursor.row], self.cursor.col - 1, ""
+            )
             self.move_cursor_by(0, -1)
 
     @property
@@ -64,7 +68,10 @@ class InteractiveTextBuffer:
         return (
             item in self.content
             if isinstance(item, str)
-            else (0 <= item.row < self.rows and 0 <= item.col <= len(self._content[item.row]))
+            else (
+                0 <= item.row < self.rows
+                and 0 <= item.col <= len(self._content[item.row])
+            )
         )
 
 
