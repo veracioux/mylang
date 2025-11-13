@@ -21,7 +21,7 @@
 
       test [.tested_func | "description"]  (
           test "description" ( # happy path
-              pseudo group prep (
+              pseudo group given (
                   # Mocking must be intuitive and syntax-light
                   # Mocking is intelligent - it knows how to handle different types of target
                   mock *Target (
@@ -30,11 +30,11 @@
                       )
                   )
               )
-              pseudo group do (
+              pseudo group when (
                   target = {Target}
                   result = {target.tested_func args}
               )
-              pseudo group assert (
+              pseudo group then (
                   assert $result == expected_value
                   assert.called (
                       target.internal_func args
