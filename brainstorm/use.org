@@ -1,0 +1,38 @@
+#+begin_src shell
+  # stdlib
+  use process
+
+  # Third-party library
+  use cli_lib
+  use cli_lib.types
+
+  # Relative to importer module file
+  use .errors (
+      AError,
+      BError,
+  )
+
+  # Absolute path
+  use /usr/local/share/somelibrary/somelibrary.my
+
+  # Relative to CWD
+  use a/b/c.my
+
+  # URL
+  use https://x.y.z
+
+  # Overridable internals
+
+  callable use.loaders
+
+  # Delegates to:
+
+  callable use.loaders.lookup # If string or path
+  callable use.loaders.lookup.std # If standard library module
+  callable use.loaders.lookup.third_party # If third-party module
+  callable use.loaders.absolute_path # If absolute file path
+  callable use.loaders.relative_path # If relative file path
+  callable use.loaders.url # If URL
+  callable use.loaders.url.http # If URL starting with http://
+  callable use.loaders.url.https # If URL starting with https://
+#+end_src
