@@ -1,0 +1,184 @@
+#+TITLE: Capabilities
+
+Capabilities represent tightly controllable permissions for code.
+
+* Scenarios
+** Download third-party package
+You want to allow the package only the subset of capabilities that it can reasonably
+want to use, based on its purpose. That decreases the package's attack surface.
+* Concept
+Capabilities can be created using domain-specific functions. Let's use a file
+system as an example.
+
+Let's create a simple file system capability that indicates access to the file system.
+#+begin_src shell
+  cap.new fs
+#+end_src
+The capability is not granted by default. In order to grant it, you can call =cap.grant=:
+#+begin_src shell
+  cap.grant fs
+#+end_src
+This will allow code full access to the file system. However, we can refine it
+with sub-capabilities. Let's create a read sub-capability:
+#+begin_src shell
+  cap.new fs.read
+#+end_src
+This new capability's state (granted or not) is intelligently determined based
+on its parent capability (and its children, if it were to have any).
+#+begin_src shell
+  state:bool|null = $fs.read
+#+end_src
+
+TODO...
+#+begin_src shell
+  # Grant read access to files under ~/src
+  cap.grant $fs.read target (
+      return {target.starts_with "~/src"}
+  )
+  # Alternative shorthand for single target
+  cap.grant $fs.read target="~/src"
+
+  # Consequently
+#+end_src
+* Generalization
+#+begin_src shell
+  cap.new name args...
+
+  cap.grant name arg0=v0 arg1=v1 ... argN=$cap.ignore
+  cap.deny name arg0=v0 arg1=v1 ... argN=$cap.ignore
+#+end_src
+* Conveniences
+** TODO Predefined predicates
+#+begin_src shell
+  {caps.OneOf list} is equivalent to [target => {list.includes $target}]
+  {caps.Matches regex} is equivalent to [target => {&{Regex regex}.test $target}]
+  {caps.Equals value} is equivalent to [target => $target == value]
+#+end_src
+* Ideas
+Tri-color system?
+- Red: not allowed
+- Yellow: allowed with restrictions
+- Green: fully allowed
+* Planned capabilities
+** File system
+*** Read
+- Subset of files
+- Predicate
+*** Write
+- Subset of files
+- Predicate
+** Network
+*** Outgoing
+- Host
+- Port
+- Predicate
+*** TODO Incoming
+* Inspiration
+#+begin_src text
+  fs               (target: File)
+  fs:read          (target: File)
+  fs:write         (target: File)
+  fs:execute       (target: File)
+  fs:delete        (target: File)
+  fs:acl           (target: File)
+  fs:chown         (target: File)
+
+  process          (target: Process)
+  process:start    (target: Process)
+  process:signal   (target: Process)
+  process:kill     (target: Process)
+  process:debug    (target: Process)
+  process:sched    (target: Process)
+
+  network
+  network:bind     (target: Host)
+  network:connect
+  network:listen
+  network:accept
+  network:raw
+
+  device
+  device:read
+  device:write
+  device:ioctl
+  device:mount
+  device:unmount
+
+  memory
+  memory:allocate
+  memory:map
+  memory:read
+  memory:write
+  memory:share
+
+  ipc
+  ipc:create
+  ipc:send
+  ipc:receive
+  ipc:attach
+  ipc:destroy
+
+  user
+  user:switch
+  user:sudo
+  user:role_assign
+  user:role_revoke
+
+  system
+  system:time:set
+  system:shutdown
+  system:reboot
+  system:module:load
+  system:module:unload
+  system:capability:grant
+  system:capability:revoke
+
+  # From SELinux Permission Scheme
+  file:read
+  file:write
+  file:append
+  file:execute
+  file:unlink
+  file:getattr
+  file:setattr
+  dir:search
+  dir:add_name
+  dir:remove_name
+
+  process:fork
+  process:transition
+  process:signal
+  process:getsched
+  process:setsched
+  process:ptrace
+
+  tcp_socket:bind
+  tcp_socket:connect
+  tcp_socket:listen
+  tcp_socket:accept
+  tcp_socket:send_msg
+  tcp_socket:recv_msg
+  node:sendto
+  node:recvfrom
+
+  chr_file:read
+  chr_file:write
+  chr_file:ioctl
+  blk_file:read
+  blk_file:write
+
+  shm:read
+  shm:write
+  shm:getattr
+  sem:wait
+  sem:signal
+  msgq:send
+  msgq:receive
+
+  system:shutdown
+  system:reboot
+  system:module_load
+  system:module_unload
+  security:setenforce
+  security:load_policy
+#+end_src
