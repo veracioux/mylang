@@ -1,0 +1,14 @@
+Ways to loop and iterate over data in MyLang.
+
+The iteration functions like =for=, =loop=, etc return an object that can hold the
+values optionally collected during the iteration, using the =collect= function.
+
+#+begin_src shell
+  positive_numbers = {
+      for x in -10..10 (
+          if $x > 0 (
+              collect 1
+          )
+      )
+  }
+#+end_src
