@@ -96,7 +96,6 @@ class REPL:
             if token == "\n":
                 return
 
-
     def handle_action(self, action: KeyChord):
         def print_self(action: KeyChord):
             print(action.ansi.decode(), end="", flush=True)
@@ -113,7 +112,6 @@ class REPL:
             self.buffer.delete_back()
         else:
             raise NotImplementedError(f"Unhandled REPL action: {action}")
-
 
     def eval(self) -> Object:
         """Evaluate the current buffer contents if they form valid MyLang code.
@@ -177,10 +175,7 @@ class REPL:
         The REPL supports multi-line input by continuing to read until
         valid syntax is entered.
         """
-        with (
-            self._manage_tty(),
-            StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get())
-        ):
+        with self._manage_tty(), StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()):
             while True:
                 try:
                     self.prompt()

@@ -572,9 +572,7 @@ def flatten_scenarios(scenarios, prefix=""):
             params.append((value.start, source, expected))
             ids.append(f"{prefix}|{key}" if prefix else key)
         else:
-            sub_params, sub_ids = flatten_scenarios(
-                value, f"{prefix}|{key}" if prefix else key
-            )
+            sub_params, sub_ids = flatten_scenarios(value, f"{prefix}|{key}" if prefix else key)
             params.extend(sub_params)
             ids.extend(sub_ids)
     return params, ids
@@ -586,9 +584,7 @@ params, ids = flatten_scenarios(scenarios)
 @pytest.mark.parametrize("start,source,expected", params, ids=ids)
 def test_parser(start: str, source: str, expected: str):
     tree = parser.parse(source, start=start)
-    assert isinstance(tree, (Token, Tree)), (
-        "Parsed result is neither a Token nor a Tree"
-    )
+    assert isinstance(tree, (Token, Tree)), "Parsed result is neither a Token nor a Tree"
     if isinstance(tree, Token):
         assert tree.value == expected.strip()
     else:

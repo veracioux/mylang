@@ -300,6 +300,7 @@ class Array(Object, Generic[T]):
         else:
             raise NotImplementedError("TODO: Choose an exception")
 
+
 @expose
 class Dict(Object):
     """An object that contains a mapping of keys to values."""

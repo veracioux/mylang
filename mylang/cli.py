@@ -25,21 +25,11 @@ class CLI:
     """Command line interface for MyLang."""
 
     def __init__(self):
-        self.parser = argparse.ArgumentParser(
-            prog="mylang",
-            description="MyLang programming language interpreter"
-        )
+        self.parser = argparse.ArgumentParser(prog="mylang", description="MyLang programming language interpreter")
 
-        self.parser.add_argument(
-            "-c","--command",
-            help="Execute the given code string"
-        )
+        self.parser.add_argument("-c", "--command", help="Execute the given code string")
 
-        self.parser.add_argument(
-            "file",
-            nargs="?",
-            help="File to execute (optional)"
-        )
+        self.parser.add_argument("file", nargs="?", help="File to execute (optional)")
 
         self._parsed_args: argparse.Namespace
 

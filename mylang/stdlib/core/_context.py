@@ -1,4 +1,5 @@
 """Internal context, not exposed to MyLang."""
+
 from contextlib import contextmanager
 import dataclasses
 from typing import TYPE_CHECKING, Any, Optional, TypeVar
@@ -16,16 +17,18 @@ if TYPE_CHECKING:
 class LocalsDict(IdentityDict[Any, "AnyObject"]):
     def __contains__(self, key, /) -> bool:
         from ._utils import python_obj_to_mylang
+
         return self._KeyWrapper(python_obj_to_mylang(key)) in self._dict
 
     def __getitem__(self, key, /):
         from ._utils import python_obj_to_mylang
+
         return self._dict[self._KeyWrapper(python_obj_to_mylang(key))]
 
     def __setitem__(self, key, value, /):
         from ._utils import python_obj_to_mylang
-        self._dict[self._KeyWrapper(python_obj_to_mylang(key))] = value
 
+        self._dict[self._KeyWrapper(python_obj_to_mylang(key))] = value
 
 
 class LexicalScope:
@@ -53,6 +56,7 @@ class LexicalScope:
 
     def __getitem__(self, key: Any) -> "AnyObject":
         from ._utils import python_obj_to_mylang
+
         key = python_obj_to_mylang(key)
         if key in self.locals:
             return self.locals[key]
@@ -73,12 +77,13 @@ class LexicalScope:
 @dataclasses.dataclass
 class CatchSpec:
     """Specification for a catch block in MyLang.
-    
+
     Example:
     catch error_key (
         body
     )
     """
+
     error_key: Optional[Object]
     body: "StatementList"
 

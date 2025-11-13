@@ -33,4 +33,5 @@ def run():
         _activated = True
     return REPL().run()
 
+
 expose_obj_attr(sys.modules[__name__], "activate", "run")

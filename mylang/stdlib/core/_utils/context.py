@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 def require_parent_stack_frame() -> "StackFrame":
     """Get the parent stack frame of the current stack frame."""
     from .._context import current_stack_frame
+
     parent = current_stack_frame.get().parent
     assert parent is not None, "No parent stack frame"
     return parent

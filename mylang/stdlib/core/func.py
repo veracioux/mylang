@@ -62,7 +62,11 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         parameters_and_body_args = (
             parameters_and_body if isinstance(parameters_and_body, Args) else Args(*parameters_and_body)
         )
-        parameters = Args(*parameters_and_body_args[:-1]) + Args.from_dict(parameters_and_body_args.keyed_dict()) + Args(**kwargs)
+        parameters = (
+            Args(*parameters_and_body_args[:-1])
+            + Args.from_dict(parameters_and_body_args.keyed_dict())
+            + Args(**kwargs)
+        )
         body = parameters_and_body_args[-1]
         assert isinstance(body, StatementList), "Body must be a StatementList"
         self.name = python_obj_to_mylang(name)
@@ -155,10 +159,10 @@ class call(Object, FunctionAsClass):
                 else:
                     raise
 
-
     @classmethod
     def __resolve_callable_object(cls, key: "AnyObject") -> "AnyObject":
         from . import Ref
+
         obj_to_call: "AnyObject"
         if isinstance(ref := key, Ref):
             obj_to_call = ref.obj
@@ -178,7 +182,11 @@ class call(Object, FunctionAsClass):
         if isinstance(obj_to_call, type) and issubclass(obj_to_call, FunctionAsClass):
             # Function defined as class
             python_callable = obj_to_call._m_classcall_
-            needs_new_stack_frame = obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME if obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None else True
+            needs_new_stack_frame = (
+                obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME
+                if obj_to_call._CLASSCALL_SHOULD_RECEIVE_NEW_STACK_FRAME is not None
+                else True
+            )
         else:
             # Regular MyLang callable
             python_callable = obj_to_call._m_call_
@@ -193,6 +201,7 @@ class call(Object, FunctionAsClass):
         value. If no error type matches, return None.
         """
         from . import Ref
+
         any_error_matched = False
         caller_stack_frame = cls._caller_stack_frame()
 
@@ -220,17 +229,19 @@ class call(Object, FunctionAsClass):
                     assert isinstance(original_body := args[-1], StatementList)
                     if catch_spec.error_key is not None:
                         # Inject the error into the catch body, under the specified key
-                        body = StatementList.from_iterable([
-                            Args.from_dict({
-                                0: Ref(set_),
-                                catch_spec.error_key: (
-                                    e
-                                    if isinstance(e, Object)
-                                    else Error("TODO: Opaque error")
+                        body = StatementList.from_iterable(
+                            [
+                                Args.from_dict(
+                                    {
+                                        0: Ref(set_),
+                                        catch_spec.error_key: (
+                                            e if isinstance(e, Object) else Error("TODO: Opaque error")
+                                        ),
+                                    }
                                 ),
-                            }),
-                            *original_body,
-                        ])
+                                *original_body,
+                            ]
+                        )
                     else:
                         body = original_body
 
@@ -256,6 +267,7 @@ class get(Object, FunctionAsClass):
     @classmethod
     def _m_classcall_(cls, args: Args, /) -> "AnyObject":
         from . import Ref
+
         # TODO: Proper exception type
         assert len(args) == 1, "get function requires exactly one argument"
         if isinstance(ref := args[0], Ref):
@@ -549,7 +561,9 @@ class use(Object, FunctionAsClass):
                             module = importlib.import_module(f"..{source}", package=__package__)
                         python_module_proxy.python_module = module
                         if exported_value is not None:
-                            assert isinstance(exported_value, Dict), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
+                            assert isinstance(
+                                exported_value, Dict
+                            ), f"{file_path} did not export a Dict. Cannot import python file mylang.stdlib.{source}"
 
                             if lexical_scope is not None:
                                 lexical_scope.locals[String("python")] = exported_value

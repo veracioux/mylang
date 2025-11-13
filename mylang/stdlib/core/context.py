@@ -5,7 +5,16 @@ from weakref import WeakKeyDictionary
 
 from ._context import StackFrame
 
-from ._utils import FunctionAsClass, function_defined_as_class, getattr_, python_obj_to_mylang, require_parent_locals, expose, expose_class_attr, require_parent_stack_frame
+from ._utils import (
+    FunctionAsClass,
+    function_defined_as_class,
+    getattr_,
+    python_obj_to_mylang,
+    require_parent_locals,
+    expose,
+    expose_class_attr,
+    require_parent_stack_frame,
+)
 from .base import Dict, Object
 
 
@@ -14,6 +23,7 @@ _stack_frame_to_context: WeakKeyDictionary["StackFrame", "Context"] = WeakKeyDic
 
 class Context(Dict):
     """Holds context-specific data."""
+
     __slots__ = ("parent",)
 
     def __init__(self, parent: "Optional[Context]" = None):

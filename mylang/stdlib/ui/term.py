@@ -12,9 +12,9 @@ class ANSISequence(bytes):
     def __str__(self):
         if self[0] == 0:
             return "^@"
-        elif self[0] in range(2, 0x1f):
+        elif self[0] in range(2, 0x1F):
             return "^" + chr(self[0] + 64)
-        elif self[0] == 0x7f:
+        elif self[0] == 0x7F:
             return "^?"
         return self.replace(b"\x1b", b"^[").decode()
 
@@ -28,9 +28,7 @@ _chord_to_ansi: dict[KeyChord, bytes] = {
 }
 
 
-_ansi_to_chord = {
-    v: k for k, v in _chord_to_ansi.items()
-}
+_ansi_to_chord = {v: k for k, v in _chord_to_ansi.items()}
 
 
 class UnknownANSISequence(bytes):
@@ -65,7 +63,7 @@ def next_token(input: TextIO) -> Token:
             key_chord = _ansi_to_chord.get(buffer.encode())
             if key_chord:
                 return key_chord
-    elif ord(char) in range(2, 0x1f) or char == "\0" or char == "\x7f":
+    elif ord(char) in range(2, 0x1F) or char == "\0" or char == "\x7f":
         return _ansi_to_chord.get(char.encode(), UnknownANSISequence(char.encode()))
 
     # No ANSI sequence matched, return the character

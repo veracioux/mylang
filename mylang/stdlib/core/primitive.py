@@ -106,9 +106,12 @@ class Float(Number[float]):
 class Bool(Scalar[bool]):
     def _m_repr_(self):
         from .complex import String
+
         return String("true" if self.value else "false")
+
     def _m_str_(self):
         return repr_(self)
+
 
 @expose
 class Empty(Primitive, ABC):
@@ -121,6 +124,7 @@ class Empty(Primitive, ABC):
 class Null(Empty):
     def _m_repr_(self):
         from . import String
+
         return String("null")
 
 
@@ -129,6 +133,7 @@ class Null(Empty):
 class Undefined(Empty):
     def _m_repr_(self):
         from . import String
+
         return String("undefined")
 
 

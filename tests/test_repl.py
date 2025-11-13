@@ -144,7 +144,7 @@ class TestREPL:
             repl.eval()
         assert repl.buffer_ == 'if true (\necho "hello"\n'  # Buffer preserved
 
-        repl.read(')')
+        repl.read(")")
         assert repl.buffer_ == 'if true (\necho "hello"\n)\n'  # Buffer preserved
         result3 = repl.eval()
 
@@ -282,11 +282,7 @@ TODO: Syntax Error
 """
 
         inputs = [
-            (
-                KeyboardInterrupt() if (raw := line.split("\0")[1]) == "^C"
-                else EOFError() if raw == "^D"
-                else raw
-            )
+            (KeyboardInterrupt() if (raw := line.split("\0")[1]) == "^C" else EOFError() if raw == "^D" else raw)
             for line in scenario.strip().splitlines()
             if "\0" in line
         ]

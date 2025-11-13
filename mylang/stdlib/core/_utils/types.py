@@ -21,13 +21,15 @@ class PythonModuleWrapper(Object):
 
     def _m_repr_(self):
         from ..complex import String
+
         # FIXME
-        return String(f'<internal module {self.module.__name__}>')
+        return String(f"<internal module {self.module.__name__}>")
 
 
 class PythonContext:
     """Holds some privileged Python context for use by MyLang stdlib modules."""
-    __slots__ = ("python_module")
+
+    __slots__ = "python_module"
 
     def __init__(self, python_module: ModuleType | None = None):
         self.python_module = python_module

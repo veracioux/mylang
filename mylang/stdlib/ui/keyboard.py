@@ -16,7 +16,12 @@ class Key(abc.ABC):
         return hash((Key, self.code.upper()))
 
     def __eq__(self, other):
-        return (isinstance(other, Key) and self.code == other.code.upper() or isinstance(other, str) and self.code == other.upper())
+        return (
+            isinstance(other, Key)
+            and self.code == other.code.upper()
+            or isinstance(other, str)
+            and self.code == other.upper()
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}.{self.code.upper()}"
@@ -62,7 +67,13 @@ class KeyChord:
 
     @final
     def __eq__(self, other):
-        return isinstance(other, KeyChord) and self.keys == other.keys or isinstance(other, Key) and len(self.keys) == 1 and self.keys[0] == other
+        return (
+            isinstance(other, KeyChord)
+            and self.keys == other.keys
+            or isinstance(other, Key)
+            and len(self.keys) == 1
+            and self.keys[0] == other
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}({', '.join(repr(key.code) for key in self.keys)})"
