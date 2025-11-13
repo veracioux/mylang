@@ -1,0 +1,23 @@
+#+begin_src shell
+  use process
+#+end_src
+Commands are created and configured as instances the =process.Command= class:
+#+begin_src shell
+  cmd = {
+      process.Command \
+          (echo a b c) \
+          cwd?="path | string" \
+          1=$os.fd.stdout \
+          2=$os.fd.stderr \
+          ...moreFileDescriptors
+  }
+#+end_src
+Running a command creates a process:
+#+begin_src shell
+  p = {cmd.run "process name"}
+#+end_src
+=process.run= is a simple utility that runs a command in simple terms and waits
+for it to finish, returning a description of the process output how the process ended.
+#+begin_src shell
+  process.run cat /some/file.txt
+#+end_src
