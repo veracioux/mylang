@@ -24,6 +24,7 @@ dev = [
     "debugpy>=1.8.15",
     "flake8~=7.3",
     "pylint~=3.3",
+    "pre-commit>=3.0.0",
 ]
 
 [tool.pyright]
