@@ -36,7 +36,6 @@ T = TypeVar("T", bound="AnyObject")
 
 
 if TYPE_CHECKING:
-    from .complex import String
     from .class_ import class_
     from ._utils.types import AnyObject
 
