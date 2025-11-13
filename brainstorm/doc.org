@@ -27,9 +27,9 @@ of various constructs.
 ## Get documentation
 The simplest case is merely obtaining the documentation of a construct.
 
-Assuming =f= is function:
+Assuming =f= is a function:
 #+begin_src shell
-  doc f  # Returns a Doc object representing the documentation of f
+  doc *f  # Returns a Doc object representing the documentation of f
 #+end_src
 
 ** Use cases
@@ -42,6 +42,21 @@ Create a =Doc= from a markdown string and attach it to a function.
   Compute the n-th Fibonacci number.
   """,
   fun fibonacci ()
+#+end_src
+
+*** Accessing and manipulating documentation
+Once documentation is attached, you can retrieve and modify it:
+
+#+begin_src shell
+  d = {doc *fibonacci} # Obtain doc object
+
+  d += {Doc (
+      # Standard elements are recognized and injected into the scope
+      div (;"some text")
+      p (;"some more text")
+      # Custom elements are tolerated as well
+      custom_el # can later be styled with CSS (or css-like, TBD)
+  )}
 #+end_src
 * Future ideas
 - Doc can be used as a base class for markup languages like HTML, XML, Markdown etc.
