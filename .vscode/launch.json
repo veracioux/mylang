@@ -7,6 +7,16 @@
       "request": "launch",
       "module": "mylang.__main__",
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug VSCode Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "smartStep": true,
+      "sourceMaps": true,
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/tools/vscode"],
+      "preLaunchTask": "Compile VSCode Extension"
     }
   ]
 }

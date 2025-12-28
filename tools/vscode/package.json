@@ -1,0 +1,27 @@
+{
+  "name": "@mylang/vscode",
+  "version": "0.0.1",
+  "main": "dist/extension.js",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/vscode": "^1.107.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "displayName": "MyLang VSCode Extension",
+  "engines": {
+    "vscode": "^1.40.0"
+  },
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}
