@@ -35,7 +35,7 @@ class UnknownANSISequence(bytes):
     pass
 
 
-Token = str | KeyChord | UnknownANSISequence
+Token = str | KeyChord | UnknownANSISequence | None
 
 
 def next_token(input: TextIO) -> Token:
@@ -49,8 +49,14 @@ def next_token(input: TextIO) -> Token:
 
     char = get_next()
 
-    if char == "\x04":
+    if char == "":
+        return None
+
+    if char == "\x04":  # ^D (Ctrl+D)
         raise EOFError
+
+    if char == "\x03":  # ^C (Ctrl+C)
+        raise KeyboardInterrupt
 
     if char in ("\t", "\n"):
         return char

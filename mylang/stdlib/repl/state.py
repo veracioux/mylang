@@ -48,6 +48,11 @@ class InteractiveTextBuffer:
     def content(self) -> str:
         return "\n".join(self._content)
 
+    @content.setter
+    def content(self, new_content: str):
+        self._content = new_content.splitlines() + ([""] if new_content.endswith("\n") else [])
+        self.cursor = Point(0, 0)
+
     @property
     def is_empty(self) -> bool:
         return len(self._content) == 0

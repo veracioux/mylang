@@ -43,6 +43,7 @@ class REPL:
         self,
         normal_prompt: str = ">>> ",
         continuation_prompt: str = "... ",
+        input_source=sys.stdin,
     ):
         """Initialize the REPL instance.
 
@@ -52,6 +53,7 @@ class REPL:
         self.normal_prompt = normal_prompt
         self.continuation_prompt = continuation_prompt
         self.buffer = InteractiveTextBuffer()
+        self.input_source = input_source
 
     def prompt(self):
         """Prompt the user for input."""
@@ -80,7 +82,7 @@ class REPL:
             KeyboardInterrupt: When Ctrl+C is pressed
         """
         while True:
-            token = next_token(sys.stdin)
+            token = next_token(self.input_source)
             if isinstance(token, str):
                 sys.stdout.write(token)
                 sys.stdout.flush()
@@ -90,6 +92,8 @@ class REPL:
             elif isinstance(token, UnknownANSISequence):
                 sys.stdout.write(str(ANSISequence(token)))
                 sys.stdout.flush()
+            elif token is None:
+                return
             else:
                 raise NotImplementedError
 
@@ -129,29 +133,32 @@ class REPL:
             UnexpectedCharacters: If the input has a syntax error.
             UnexpectedEOF: If the input is incomplete.
         """
-        if self.buffer.content.strip():
-            # Parse the buffer
-            # Buffer is cleared on successful parsing or on syntax error
-            try:
-                tree = parser.parse(self.buffer.content + "\n", start="statement_list")
-            except UnexpectedCharacters:
-                self.buffer = InteractiveTextBuffer()
-                raise
+        content = self.buffer.content.strip()
+        if not content:
             self.buffer = InteractiveTextBuffer()
+            return undefined
 
-            # Print some debug info
-            # FIXME: Remove before release
-            if os.getenv("MYLANG_DEBUG"):
-                _print_debug_info(tree)
+        # Parse the buffer
+        # Buffer is cleared on successful parsing or on syntax error
+        try:
+            tree = parser.parse(self.buffer.content + "\n", start="statement_list")
+        except UnexpectedCharacters:
+            self.buffer = InteractiveTextBuffer()
+            raise
+        self.buffer = InteractiveTextBuffer()
 
-            statement_list = Transformer().transform(tree)
+        # Print some debug info
+        # FIXME: Remove before release
+        if os.getenv("MYLANG_DEBUG"):
+            _print_debug_info(tree)
 
-            assert isinstance(
-                statement_list, StatementList
-            ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
-            result = statement_list.execute()
-            return result
-        return undefined
+        statement_list = Transformer().transform(tree)
+
+        assert isinstance(
+            statement_list, StatementList
+        ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
+        result = statement_list.execute()
+        return result
 
     def print(self, result: Object):
         """Print the result of evaluation if it's not undefined.
@@ -204,8 +211,10 @@ class REPL:
     @contextmanager
     def _manage_tty(self):
         """Manage TTY settings for the REPL."""
-        stdin = sys.stdin
-        stdin_fd = stdin.fileno()
+        if not self.input_source.isatty():
+            yield
+            return
+        stdin_fd = self.input_source.fileno()
         attrs = old_settings = termios.tcgetattr(stdin_fd)
         attrs[3] &= ~(termios.ICANON | termios.ECHO)
         termios.tcsetattr(stdin_fd, termios.TCSANOW, attrs)
