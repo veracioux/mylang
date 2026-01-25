@@ -48,7 +48,7 @@ args.1: _args
 _statement: expression | args
 _statement_separation: (_WS_INLINE* (";" | _NEWLINE) _WS*)+
 // A single expression or multiple statements
-statement_list: (_statement _statement_separation)+ _statement?
+statement_list: (_statement? _statement_separation)+ _statement?
 _wrapped_statement_list: "(" _WS* statement_list _WS* ")"
 execution_block_single_statement: (_positional_args _keyed_args?)
                                 | expression
