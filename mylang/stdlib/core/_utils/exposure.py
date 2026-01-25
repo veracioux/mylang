@@ -1,5 +1,6 @@
 """Utilities for exposing Python objects and attributes to MyLang."""
 
+import inspect
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakKeyDictionary
@@ -67,6 +68,15 @@ def expose_obj_attr(obj: T, *attr_names: str) -> T:
     return obj
 
 
+def expose_module_attr(*attr_names: str):
+    """Decorator to expose attributes on all modules in the context of MyLang."""
+    current_frame = inspect.currentframe()
+    if current_frame is None:
+        raise RuntimeError("Cannot determine the current frame for expose_module_attr")
+
+    expose_obj_attr(inspect.getmodule(current_frame.f_back), *attr_names)
+
+
 def is_exposed(obj: Any):
     """Check if the object is exposed outside of Python."""
     return id(obj) in _exposed_objects
@@ -74,10 +84,10 @@ def is_exposed(obj: Any):
 
 def is_attr_exposed(obj: Any, attr_name: str):
     """Check if the given attribute on obj is exposed outside of Python."""
-    if (obj, attr_name) in _exposed_obj_attrs or (
-        type(obj),
-        attr_name,
-    ) in _exposed_instance_attrs:
+    if (obj, attr_name) in _exposed_obj_attrs:
+        return True
+
+    if (type(obj), attr_name) in _exposed_instance_attrs:
         return True
 
     type_ = obj if isinstance(obj, type) else type(obj)

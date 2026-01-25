@@ -1,7 +1,6 @@
-import sys
 import subprocess
 from ..core import undefined
-from ..core._utils import FunctionAsClass, expose_obj_attr, function_defined_as_class
+from ..core._utils import FunctionAsClass, expose_module_attr, function_defined_as_class
 from ..core import Object, String
 
 
@@ -19,4 +18,4 @@ class run(Object, FunctionAsClass):
         return undefined
 
 
-expose_obj_attr(sys.modules[__name__], "run")
+expose_module_attr("run")

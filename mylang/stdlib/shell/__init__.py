@@ -1,7 +1,7 @@
 import sys
 
 from ..core import undefined, get, fun, Array
-from ..core._utils import python_obj_to_mylang, expose_obj_attr, require_parent_locals
+from ..core._utils import python_obj_to_mylang, expose_module_attr, require_parent_locals
 from ..core._context import internal_module_bridge, current_stack_frame
 from ..repl import REPL
 
@@ -34,4 +34,4 @@ def run():
     return REPL().run()
 
 
-expose_obj_attr(sys.modules[__name__], "activate", "run")
+expose_module_attr("activate", "run")
