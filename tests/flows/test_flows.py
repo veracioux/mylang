@@ -28,7 +28,7 @@ def execute_module(*path_components: str):
     ):
         tree = parser.parse(text, start="module")
         statement_list: StatementList = Transformer().transform(tree)
-        statement_list.execute()
+        statement_list()
 
 
 def test_empty(capsys: CaptureFixture[str]):

@@ -40,7 +40,7 @@ def main():
         print("Syntax tree:\n", tree.pretty())
         with StackFrame(builtins_.create_locals_dict(), parent=current_stack_frame.get()):
             statement_list: StatementList = Transformer().transform(tree)
-            statement_list.execute()
+            statement_list()
 
 
 if __name__ == "__main__":

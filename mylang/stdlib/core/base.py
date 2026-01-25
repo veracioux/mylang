@@ -332,6 +332,9 @@ class Dict(Object):
     def __len__(self):
         return len(self._m_dict_)
 
+    def __bool__(self):
+        return bool(self._m_dict_)
+
     def __iter__(self):
         """Iterate over the keys of the dictionary."""
         return iter(self._m_dict_)

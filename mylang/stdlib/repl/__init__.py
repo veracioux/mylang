@@ -157,7 +157,7 @@ class REPL:
         assert isinstance(
             statement_list, StatementList
         ), f"Expected parse+transform to give StatementList, got {type(statement_list)}"
-        result = statement_list.execute()
+        result = statement_list()
         return result
 
     def print(self, result: Object):

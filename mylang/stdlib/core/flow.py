@@ -71,7 +71,7 @@ class if_(Object, FunctionAsClass):
                 modified_statement_list
             )
 
-            value = modified_statement_list.execute()
+            value = modified_statement_list()
             return value
         # Simple if statement with single condition
         elif condition:
@@ -80,7 +80,7 @@ class if_(Object, FunctionAsClass):
             )
             if if_block_data is not None:
                 if_block_data.modified_statement_list.aborted = True
-            return statement_list.execute()
+            return statement_list()
         else:
             return undefined
 
@@ -92,7 +92,7 @@ class if_(Object, FunctionAsClass):
         def _m_classcall_(cls, args: Args, /):
             assert len(args) == 1, "if requires exactly 1 argument"
             assert isinstance(statement_list := args[0], StatementList), "if requires exactly 1 argument"
-            return statement_list.execute()
+            return statement_list()
 
 
 @expose
@@ -131,7 +131,7 @@ class loop(Object, FunctionAsClass):
         # TODO: Consider adding some return value from the loop
         while True:
             # Execute statement list (it will abort something breaks or continues the loop)
-            copied_statement_list.execute()
+            copied_statement_list()
 
             # Check if break or return was called
             if loop_data.broken or stack_frame.return_value is not None:
@@ -162,7 +162,7 @@ class for_(Object, FunctionAsClass):
         stack_frame.set_parent_lexical_scope(stack_frame.parent.lexical_scope)
         for value in iter_(iterable):
             stack_frame.locals[loop_var] = value
-            statement_list.execute()
+            statement_list()
 
         return undefined
 
@@ -268,7 +268,7 @@ class try_(Object, FunctionAsClass):
 
         cls._caller_stack_frame().catch_spec = CatchSpec(error_key, catch_body)
 
-        return body.execute()
+        return body()
 
     @classmethod
     def __validate_catch_body(cls, catch_body: StatementList):

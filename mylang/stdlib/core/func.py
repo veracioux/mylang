@@ -90,7 +90,7 @@ class fun(Object, FunctionAsClass, Generic[TypeReturn]):
         stack_frame = current_stack_frame.get()
         stack_frame.set_parent_lexical_scope(self.closure_lexical_scope)
         populate_locals_for_callable(stack_frame.locals, self.parameters, args)
-        return self.body.execute()  # type: ignore
+        return self.body()  # type: ignore
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name!r})"
@@ -246,12 +246,12 @@ class call(Object, FunctionAsClass):
                         body = original_body
 
                     catch_body.aborted = True
-                    return body.execute()
+                    return body()
 
         catch_body = StatementList.from_iterable(
             (Args(Ref(execute_if_error_matches)) + args for args in catch_spec.body)
         )
-        value = catch_body.execute()
+        value = catch_body()
 
         if any_error_matched:
             return value
@@ -454,7 +454,7 @@ class use(Object, FunctionAsClass):
         stack_frame = current_stack_frame.get()
         stack_frame.set_parent_lexical_scope(LexicalScope(builtins_.create_locals_dict()))
         statement_list = Transformer().transform(tree)
-        statement_list.execute()
+        statement_list()
 
         if stack_frame.return_value is not None:
             exported_value = stack_frame.return_value
@@ -634,7 +634,8 @@ class StatementList(Array[Args]):
         """Used by executed code to signal that the execution of the StatementList should be aborted."""
         super().__init__(*args, **kwargs)
 
-    def execute(self) -> Object:
+    def _m_call_(self, args: Args) -> Object:
+        assert not args, "StatementList does not accept arguments"
         from . import undefined
 
         for i_statement, statement in enumerate(self):
@@ -668,6 +669,9 @@ class StatementList(Array[Args]):
 
         return String("{" + type(self).__name__ + " " + str(super()._m_repr_()) + "}")
 
+    def __call__(self):
+        return self._m_call_(Args())
+
 
 @expose
 class ExecutionBlock(StatementList, IncompleteExpression):
@@ -675,7 +679,7 @@ class ExecutionBlock(StatementList, IncompleteExpression):
         caller_stack_frame = current_stack_frame.get()
         with nested_stack_frame() as stack_frame:
             stack_frame.set_parent_lexical_scope(caller_stack_frame.lexical_scope)
-            return super().execute()
+            return super().__call__()
 
 
 @expose

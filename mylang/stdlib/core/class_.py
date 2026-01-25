@@ -48,7 +48,7 @@ class class_(Object, FunctionAsClass):
         body = rest[-1]
         assert isinstance(body, StatementList), "class body must be a StatementList"
         stack_frame.lexical_scope.custom_data[_Symbols.CURRENT_CLASS] = self
-        body.execute()
+        body()
 
         if stack_frame.parent is not None:
             # Bind the class value under class name as key in caller's lexical scope
