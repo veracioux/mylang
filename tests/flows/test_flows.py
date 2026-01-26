@@ -210,9 +210,9 @@ def test_errors(capsys: CaptureFixture[str]):
     assert (
         captured.out.strip()
         == """
-Caught error of type Error with message:  .
-Caught error of type Error with message err msg
-Caught error of type MyError with message my error
+1 Caught error of type Error with message:  .
+2 Caught error of type Error with message err msg
+3 Caught error of type MyError with message my error
     """.strip()
     )
     assert captured.err == ""
